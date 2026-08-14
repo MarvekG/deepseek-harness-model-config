@@ -1,0 +1,3 @@
+- insert:
+    - id: models-config-plugin
+      name: dsh-models-config-plugin
