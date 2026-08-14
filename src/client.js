@@ -671,7 +671,7 @@ window.__ModuleLoader__.load({
         ),
         selectedModels.length === 0 ? null : h('div', { style: { display: 'flex', flexDirection: 'column', gap: '6px' } },
           h('strong', { style: { fontSize: '13px' } }, t('configPreview')),
-          h('pre', { style: { margin: 0, padding: '10px', overflow: 'auto', borderRadius: '8px', background: 'var(--dsw-alias-bg-module-platform)', border: '1px solid var(--dsw-alias-border-l2)', fontSize: '12px', lineHeight: '18px' } }, JSON.stringify(preview, null, 2)),
+          h('pre', { style: { boxSizing: 'border-box', height: '280px', margin: 0, padding: '10px', overflow: 'auto', borderRadius: '8px', background: 'var(--dsw-alias-bg-module-platform)', border: '1px solid var(--dsw-alias-border-l2)', fontSize: '12px', lineHeight: '18px' } }, JSON.stringify(preview, null, 2)),
           h('p', { style: { margin: 0, color: 'var(--dsw-alias-label-tertiary)', fontSize: '12px' } }, t('keyPreviewNotice')),
         ),
         failure !== undefined ? h('p', { style: { margin: 0, color: 'var(--dsw-alias-state-error-primary)', fontSize: '13px' } }, failure) : null,
