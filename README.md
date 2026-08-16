@@ -14,6 +14,16 @@
 - 所有界面文案支持中文和英文，跟随 Harness 语言设置。
 - API Key 仅经 Harness 凭据存储写入，不会进入 `settings.yaml` 或配置预览。
 
+打开设置：
+<img width="1613" height="1011" alt="image" src="https://github.com/user-attachments/assets/132b604b-b5ed-4986-87eb-c307d27cd8ba" />
+
+新增端点：
+<img width="1180" height="892" alt="image" src="https://github.com/user-attachments/assets/209bd3d6-ae39-489e-ae15-eb215c6c1126" />
+
+获取模型，并自动获取推理强度、上下文大小、输出强度等参数：
+<img width="1610" height="1439" alt="image" src="https://github.com/user-attachments/assets/4511b643-2d09-4a86-bb7f-5c4f7b6620a7" />
+
+
 ## 安装
 
 需要已安装并可运行的 `dsh`。默认从 GitHub 安装：
