@@ -7,6 +7,7 @@
 ## 功能
 
 - 新增自定义端点：名称、URL、API Key 和协议。
+- 支持在 provider 层配置自定义请求 Header，并应用于模型请求。
 - 支持 `openai-completions`、`openai-responses`、`anthropic-messages`。
 - 通过统一的 `GET /models` 流程获取候选模型，支持全选、反选和全不选。
 - 从 `models.dev` 补全缺失的上下文窗口、最大输出、输入模态和推理能力。
@@ -23,6 +24,7 @@
 获取模型，并自动获取推理强度、上下文大小、输出强度等参数：
 <img width="1610" height="1439" alt="image" src="https://github.com/user-attachments/assets/4511b643-2d09-4a86-bb7f-5c4f7b6620a7" />
 
+自定义 Header 仅用于模型请求；“获取可用模型”仍使用 API Key。
 
 ## 安装
 
