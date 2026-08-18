@@ -140,6 +140,7 @@ models:
 - **编辑模式**：加载已保存 provider 的 displayName、baseURL、api、用户层 Header、用户层显式高级参数、有效模型列表和当前模型选择。schema 或 base 层的默认值不回填为用户层参数；端点字段、Header、模型和凭据在同一编辑器中编辑；路由 key 保持不变，displayName 改动只更新显示名。API Key 留空表示继续使用已有凭据，填写新值才更新凭据。
 - **重新拉取**：编辑模式和新增模式都通过 `llm.discoverModels` 获取候选，不直接写入 settings。编辑模式传递现有 provider route，使 adapter 能使用已保存凭据；用户输入的新 Key 优先用于本次拉取。重新拉取后，当前已勾选的模型保持勾选，新候选默认不勾选；当前勾选但端点未返回的模型保留在列表中，避免刷新误删。
 - **恢复继承**：已存在用户层 `models` 覆盖且存在 base 模型列表时，编辑器保留“恢复继承”动作，显式执行 `unset providers.<route>.models`，恢复 base 层模型列表。
+- **删除端点**：已保存端点在端点选择栏旁提供删除动作，确认后以 `unset providers.<route>` 删除用户层配置；只有 `apiKeyEnv` 等于插件按 route 派生的 `<ROUTE>_API_KEY` 时才同步删除凭据，用户自定义凭据引用不会被自动删除。
 - **端点高级参数**：编辑器暴露自定义/继承 Header、`defaultContextWindow`、`defaultMaxTokens`、`defaultInput`、默认 `reasoning`、`thinkingBudgets`、`compat`、`cacheRetention`、`transport`、`timeoutMs`、`websocketConnectTimeoutMs`、`streamIdleTimeoutMs` 和 `retryPolicy`；字段默认为空，空值不写入最终 profile，已存在的用户层值重置后使用 `unset`。
 - **保存**：新增模式写入整段 profile；编辑模式只写入发生变化的 displayName、api、baseURL、models、headers 和必要的 apiKeyEnv 字段，并携带 `expectedRevision`。只有保存成功后才调用 `onSaved` 刷新设置快照。
 - **布局**：顶部选择已保存端点或进入“新增端点”；两种模式下端点字段、重新拉取、模型选择、参数编辑、配置预览和保存按钮位置一致。模型列表加载后，即使没有勾选模型或端点高级参数折叠，配置预览仍实时显示端点高级参数。
@@ -232,4 +233,5 @@ models:
 - [LLM 流式子系统](../deepseek-harness/docs/subsystems/llm-streaming.md)、[设置子系统](../deepseek-harness/docs/subsystems/settings.md)、[凭据子系统](../deepseek-harness/docs/subsystems/credentials.md)
 - [新增 LLM 适配器 cookbook](../deepseek-harness/docs/cookbook/adding-an-llm-adapter.md)、[新增包 cookbook](../deepseek-harness/docs/cookbook/adding-a-package.md)
 - 包 README：`llm`、`llm-pi-ai`、`llm-deepseek`、`settings`、`credentials`、`agent-default-model`、`ui-settings`、`ui-settings-models`、`ui-model-selection`
+- [llm-pi-ai 参数参考](llm-pi-ai-parameters.md)
 - Agent Notes：`2026-07-30-web-config-plane`、`2026-08-04-declaring-a-provider-from-the-models-page`、`2026-07-29-request-level-llm-config-credentials`、`2026-08-04-configuration-source-ownership`
