@@ -19,15 +19,15 @@ window.__ModuleLoader__.load({
       nav: 'Advanced model config',
       title: 'Advanced model config',
       loading: 'Loading model configuration…',
-      adapterMissing: 'llm-pi-ai is not loaded. Add a custom provider from the Models page first.',
-      intro: 'Declare capacities and reasoning support for custom models. Endpoints, keys, and model discovery remain on the Models page.',
+      adapterMissing: 'llm-pi-ai is not loaded. Enable the llm-pi-ai adapter first.',
+      intro: 'Create custom endpoints and declare each model\'s capacity and reasoning support.',
       parameterReference: 'Parameter reference',
-      noProviders: 'No custom provider yet. Add a provider and at least one model from the Models page.',
+      noProviders: 'No custom provider yet. Add an endpoint here, then fetch and select at least one model.',
       provider: 'Provider',
       inheritedModels: 'Editing the user-layer model list',
       materializedModels: 'Editing materializes the model list in the user layer',
       restoreInheritance: 'Restore inheritance',
-      noModels: 'This provider has no editable models. Add or fetch models from the Models page.',
+      noModels: 'This provider has no editable models. Fetch models from this page, then select at least one.',
       discardReload: 'Discard and reload',
       save: 'Save',
       saving: 'Saving…',
@@ -153,15 +153,15 @@ window.__ModuleLoader__.load({
       nav: '模型高级配置',
       title: '模型高级配置',
       loading: '正在加载模型配置…',
-      adapterMissing: '未装载 llm-pi-ai。请先在“模型”页添加一个自定义提供方。',
-      intro: '在此声明自定义模型的容量与推理能力。端点、密钥和获取可用模型仍在“模型”页管理。',
+      adapterMissing: '未装载 llm-pi-ai。请先启用 llm-pi-ai 适配器。',
+      intro: '在此新增自定义端点，并声明每个模型的容量与推理能力。',
       parameterReference: '参数文档',
-      noProviders: '尚无自定义提供方。请先在“模型”页添加一个提供方和至少一个模型。',
+      noProviders: '尚无自定义提供方。请在本页新增端点，然后获取并勾选至少一个模型。',
       provider: '提供方',
       inheritedModels: '正在编辑用户层模型列表',
       materializedModels: '编辑后会在用户层物化模型列表',
       restoreInheritance: '恢复继承',
-      noModels: '该提供方没有可编辑的模型。请在“模型”页添加或获取模型。',
+      noModels: '该提供方没有可编辑的模型。请在本页获取模型，然后勾选至少一个。',
       discardReload: '放弃并重新加载',
       save: '保存',
       saving: '保存中…',
@@ -554,6 +554,20 @@ window.__ModuleLoader__.load({
 
     function jsonEqual(left, right) {
       return JSON.stringify(left) === JSON.stringify(right)
+    }
+
+    function presentAdvancedValue(value) {
+      if (value === undefined) return false
+      if (Array.isArray(value)) return value.length > 0
+      if (value !== null && typeof value === 'object') return Object.keys(value).length > 0
+      return true
+    }
+
+    function normalizeAdvanced(value) {
+      const source = value !== null && typeof value === 'object' ? value : {}
+      return Object.fromEntries(PROVIDER_ADVANCED_FIELDS
+        .filter(field => presentAdvancedValue(source[field]))
+        .map(field => [field, source[field]]))
     }
 
     function copyModel(model) {
@@ -1109,14 +1123,9 @@ window.__ModuleLoader__.load({
       const endpointChanged = !editing || endpoint.name !== (initial.name ?? '')
         || endpoint.baseURL.trim() !== (initial.baseURL ?? '')
         || endpoint.api !== (initial.api ?? '') || modelsChanged || headersChanged
-        || !jsonEqual(advanced, initialAdvanced)
+        || !jsonEqual(normalizeAdvanced(advanced), normalizeAdvanced(initialAdvanced))
       const keyChanged = endpoint.apiKey.trim() !== ''
-      const advancedProfile = Object.fromEntries(Object.entries(advanced).filter(([, value]) => {
-        if (value === undefined) return false
-        if (Array.isArray(value)) return value.length > 0
-        if (value !== null && typeof value === 'object') return Object.keys(value).length > 0
-        return true
-      }))
+      const advancedProfile = normalizeAdvanced(advanced)
       const profile = {
         displayName: endpoint.name,
         apiKeyEnv: keyRef,
@@ -1265,10 +1274,12 @@ window.__ModuleLoader__.load({
               : { op: 'set', path: ['providers', route, 'headers'], value: effectiveHeaders })
         }
         for (const field of PROVIDER_ADVANCED_FIELDS) {
-          if (jsonEqual(advanced[field], initialAdvanced[field])) continue
-          ops.push(advanced[field] === undefined
+          const next = presentAdvancedValue(advanced[field]) ? advanced[field] : undefined
+          const previous = presentAdvancedValue(initialAdvanced[field]) ? initialAdvanced[field] : undefined
+          if (jsonEqual(next, previous)) continue
+          ops.push(next === undefined
             ? { op: 'unset', path: ['providers', route, field] }
-            : { op: 'set', path: ['providers', route, field], value: advanced[field] })
+            : { op: 'set', path: ['providers', route, field], value: next })
         }
         if (initial.apiKeyEnv === undefined && keyChanged) {
           ops.push({ op: 'set', path: ['providers', route, 'apiKeyEnv'], value: keyRef })

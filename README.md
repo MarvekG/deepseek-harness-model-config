@@ -27,14 +27,14 @@
 <img width="1746" height="1580" alt="image" src="https://github.com/user-attachments/assets/828f36ea-8a7d-4021-9dbb-253d60a1e949" />
 
 **参数补充**
-1. 端点高级参数：一般保持默认即可。
+1. 端点高级参数：一般保持默认即可。自定义 Header 仅用于模型请求；“获取可用模型”仍使用 API Key。
 
 <img width="1712" height="1613" alt="image" src="https://github.com/user-attachments/assets/e185563c-4b89-468f-8463-49463c5b6e41" />
 
-3. 模型参数：主要检查上下文大小和最大输出长度。
+2. 模型参数：主要检查上下文大小和最大输出长度。
 <img width="1744" height="1628" alt="image" src="https://github.com/user-attachments/assets/a9a1e123-1e78-4435-addc-02ded574ba83" />
 
-模型参数一般能自动填写，前提时要能访问 [https://models.dev](https://models.dev)
+模型参数一般能自动填写，前提是要能访问 [https://models.dev](https://models.dev)
 
 ## 安装
 
