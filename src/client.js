@@ -68,6 +68,7 @@ window.__ModuleLoader__.load({
       budgetMedium: 'Medium budget',
       budgetHigh: 'High budget',
       compat: 'Reasoning compatibility',
+      modelCompatDescription: 'Only applies to openai-completions models.',
       thinkingFormat: 'Thinking format',
       supportsReasoningEffort: 'Supports reasoning_effort',
       cacheRetention: 'Prompt cache retention',
@@ -197,6 +198,7 @@ window.__ModuleLoader__.load({
       budgetMedium: 'Medium 预算',
       budgetHigh: 'High 预算',
       compat: '推理兼容设置',
+      modelCompatDescription: '仅适用于 openai-completions 模型。',
       thinkingFormat: '推理格式',
       supportsReasoningEffort: '支持 reasoning_effort',
       cacheRetention: '提示缓存保留',
@@ -919,9 +921,41 @@ window.__ModuleLoader__.load({
       )
     }
 
+    function ModelCompatEditor({ value, onChange, disabled, api, t }) {
+      const compat = value !== null && typeof value === 'object' ? value : {}
+      const patch = (field, nextValue) => {
+        const next = { ...compat }
+        if (nextValue === undefined) delete next[field]
+        else next[field] = nextValue
+        onChange(Object.keys(next).length === 0 ? undefined : next)
+      }
+      const enabled = !disabled && (api === undefined || api === 'openai-completions')
+      return h('div', { style: { display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '8px' } },
+        h('strong', { style: { fontSize: '13px' } }, t('compat')),
+        h('p', { style: { margin: 0, color: 'var(--dsw-alias-label-tertiary)', fontSize: '12px' } }, t('modelCompatDescription')),
+        h(Field, { label: t('thinkingFormat') }, h('select', {
+          style: inputStyle, value: compat.thinkingFormat ?? '', disabled: !enabled,
+          onChange: event => patch('thinkingFormat', event.target.value === '' ? undefined : event.target.value),
+        },
+        h('option', { value: '' }, t('inheritDefault')),
+        THINKING_FORMATS.map(format => h('option', { key: format, value: format }, format)),
+        )),
+        h(Field, { label: t('supportsReasoningEffort') }, h('select', {
+          style: inputStyle,
+          value: compat.supportsReasoningEffort === undefined ? '' : String(compat.supportsReasoningEffort),
+          disabled: !enabled,
+          onChange: event => patch('supportsReasoningEffort', event.target.value === '' ? undefined : event.target.value === 'true'),
+        },
+        h('option', { value: '' }, t('inheritDefault')),
+        h('option', { value: 'true' }, 'true'),
+        h('option', { value: 'false' }, 'false'),
+        )),
+      )
+    }
+
     function ModelRow({
       model, index, onChange, disabled, lockId = false,
-      metadataChoice, metadataCandidates = [], metadataDefaultProvider, metadataOfficialProvider, onMetadataChoice, t,
+      api, metadataChoice, metadataCandidates = [], metadataDefaultProvider, metadataOfficialProvider, onMetadataChoice, t,
     }) {
       const patch = changes => {
         const next = { ...model, ...changes }
@@ -996,6 +1030,13 @@ window.__ModuleLoader__.load({
           value: model.reasoningEfforts,
           onChange: reasoningEfforts => patch({ reasoningEfforts }),
           disabled,
+          t,
+        }),
+        h(ModelCompatEditor, {
+          value: model.compat,
+          onChange: compat => patch({ compat }),
+          disabled,
+          api,
           t,
         }),
       )
@@ -1344,6 +1385,7 @@ window.__ModuleLoader__.load({
                 key: model.id,
                 model,
                 index,
+                api: endpoint.api,
                 onChange: next => updateSelectedModel(model.id, next),
                 disabled: busy || settingsSaved,
                 lockId: true,
