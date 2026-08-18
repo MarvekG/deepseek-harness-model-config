@@ -10,7 +10,7 @@
 - 支持在 provider 层配置自定义请求 Header，并应用于模型请求。
 - 支持 `openai-completions`、`openai-responses`、`anthropic-messages`。
 - 通过统一的 `GET /models` 流程获取候选模型，支持全选、反选和全不选。
-- 从 `models.dev` 补全缺失的上下文窗口、最大输出、输入模态和推理能力。
+- 从 `models.dev` 补全缺失的上下文窗口、最大输出、输入模态和推理能力；优先按模型名称选择官方 provider，找不到时选择默认 provider，并可在保存前切换完整 provider 记录。
 - 在保存前编辑每个模型的容量、文本/图片输入和 `reasoningEfforts`，并查看不含密钥的配置预览。
 - 所有界面文案支持中文和英文，跟随 Harness 语言设置。
 - API Key 仅经 Harness 凭据存储写入，不会进入 `settings.yaml` 或配置预览。
