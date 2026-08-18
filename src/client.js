@@ -28,14 +28,12 @@ window.__ModuleLoader__.load({
       restored: 'Restored the inherited model list.',
       addEndpoint: 'Add endpoint',
       reasoning: 'Reasoning effort',
-      inheritCatalog: 'Inherit the model catalog',
-      disableReasoning: 'Disable reasoning',
-      declareEfforts: 'Declare supported efforts',
       offPlaceholder: 'Blank disables per protocol',
       wirePlaceholder: 'Wire spelling',
       wireLabel: '{level} wire spelling',
       delete: 'Delete',
       addLevel: 'Add effort',
+      clearReasoning: 'Clear reasoning override',
       add: 'Add',
       modelIndex: 'Model {index}',
       modelId: 'Model ID',
@@ -67,7 +65,7 @@ window.__ModuleLoader__.load({
       endpointKey: 'API key',
       endpointKeyPlaceholder: 'Used only to fetch models and store the credential',
       endpointNameRequired: 'Enter an endpoint name.',
-      endpointNameInvalid: 'The name may contain only English letters.',
+      endpointNameInvalid: 'The name must start with an English letter and contain only English letters and numbers.',
       endpointUrlRequired: 'Enter an endpoint URL.',
       endpointUrlInvalid: 'Enter a valid http:// or https:// URL.',
       endpointUrlProtocol: 'The URL must start with http:// or https://.',
@@ -88,8 +86,13 @@ window.__ModuleLoader__.load({
       cancel: 'Cancel',
       confirmSave: 'Confirm and save',
       retryKey: 'Retry saving API key',
-      catalogApplied: 'Completed missing model metadata from models.dev.',
+      catalogApplied: 'Completed metadata for {matched} models. Official providers: {official}; default providers: {ambiguous}; no catalog match: {unmatched}.',
       catalogUnavailable: 'Could not load models.dev metadata. The endpoint results remain editable.',
+      catalogSource: 'Catalog source',
+      catalogSourceDescription: 'Each option is one provider record. Switching it replaces all catalog-derived fields for this model.',
+      catalogDefault: 'Default provider: {provider} ({context}/{output})',
+      catalogOfficial: 'Official provider: {provider} ({context}/{output})',
+      catalogProvider: '{provider} ({context}/{output})',
       reasoningInvalid: 'Reasoning efforts must inherit, be disabled, or be an effort list.',
       reasoningEmpty: 'A declared reasoning list needs at least one effort.',
       reasoningOffOnly: 'A list with only off has no usable reasoning effort.',
@@ -120,14 +123,12 @@ window.__ModuleLoader__.load({
       restored: '已恢复继承的模型列表。',
       addEndpoint: '新增端点',
       reasoning: '推理强度',
-      inheritCatalog: '继承模型目录',
-      disableReasoning: '禁用推理',
-      declareEfforts: '声明支持的级别',
       offPlaceholder: '留空表示按协议关闭',
       wirePlaceholder: '服务端拼写',
       wireLabel: '{level} 服务端拼写',
       delete: '删除',
       addLevel: '添加级别',
+      clearReasoning: '清除推理覆盖',
       add: '添加',
       modelIndex: '模型 {index}',
       modelId: '模型 ID',
@@ -159,7 +160,7 @@ window.__ModuleLoader__.load({
       endpointKey: 'API Key',
       endpointKeyPlaceholder: '仅用于获取模型和保存凭据',
       endpointNameRequired: '请填写端点名称。',
-      endpointNameInvalid: '名称只能包含英文大小写字母。',
+      endpointNameInvalid: '名称必须以英文字母开头，只能包含英文字母和数字。',
       endpointUrlRequired: '请填写端点 URL。',
       endpointUrlInvalid: '请输入有效的 http:// 或 https:// URL。',
       endpointUrlProtocol: 'URL 必须以 http:// 或 https:// 开头。',
@@ -180,8 +181,13 @@ window.__ModuleLoader__.load({
       cancel: '取消',
       confirmSave: '确认并保存',
       retryKey: '重试保存 API Key',
-      catalogApplied: '已从 models.dev 补全缺失的模型参数。',
+      catalogApplied: '已为 {matched} 个模型补全参数；官方 provider {official} 个，默认 provider {ambiguous} 个，没有目录记录 {unmatched} 个。',
       catalogUnavailable: '无法加载 models.dev 元数据；端点返回的模型仍可编辑。',
+      catalogSource: '目录来源',
+      catalogSourceDescription: '每个选项都是一个完整的 provider 记录；切换后会整体替换该模型的目录参数。',
+      catalogDefault: '默认 provider：{provider}（{context}/{output}）',
+      catalogOfficial: '官方 provider：{provider}（{context}/{output}）',
+      catalogProvider: '{provider}（{context}/{output}）',
       reasoningInvalid: '推理强度必须是“继承”、禁用或级别列表。',
       reasoningEmpty: '已声明推理强度时至少选择一个级别。',
       reasoningOffOnly: '仅声明关闭级别没有可用的推理强度。',
@@ -232,44 +238,135 @@ window.__ModuleLoader__.load({
     function modelRecordCandidates(catalog, id) {
       if (catalog === null || typeof catalog !== 'object') return []
       const matches = []
-      for (const provider of Object.values(catalog)) {
+      for (const [providerKey, provider] of Object.entries(catalog)) {
         if (provider === null || typeof provider !== 'object') continue
         const models = provider.models
         const model = models !== null && typeof models === 'object' ? models[id] : undefined
-        if (model !== null && typeof model === 'object') matches.push({ provider, model })
+        if (model !== null && typeof model === 'object') {
+          matches.push({
+            providerId: typeof provider.id === 'string' && provider.id !== '' ? provider.id : providerKey,
+            model,
+          })
+        }
       }
       return matches
     }
 
-    function modelMetadataFingerprint(model) {
-      const limit = model.limit !== null && typeof model.limit === 'object' ? model.limit : {}
-      const modalities = model.modalities !== null && typeof model.modalities === 'object' ? model.modalities : {}
-      return JSON.stringify({
-        context: positiveCatalogLimit(limit.context),
-        output: positiveCatalogLimit(limit.output),
-        input: Array.isArray(modalities.input) ? modalities.input.filter(value => value === 'text' || value === 'image') : [],
-        reasoning: model.reasoning === false ? false : model.reasoning_options,
-      })
+    const OFFICIAL_PROVIDER_RULES = [
+      ['deepseek', /^deepseek(?:[-/.]|$)/],
+      ['openai', /^(?:gpt(?:[-/.]|$)|o[134](?:[-/.]|$)|codex(?:[-/.]|$))/],
+      ['xai', /^(?:grok|x-ai\/grok|xai\/grok)(?:[-/.]|$)/],
+      ['anthropic', /^claude(?:[-/.]|$)/],
+      ['google', /^gemini(?:[-/.]|$)/],
+      ['mistral', /^mistral(?:[-/.]|$)/],
+      ['cohere', /^command(?:[-/.]|$)/],
+      ['nvidia', /^nemotron(?:[-/.]|$)/],
+      ['meta', /^llama(?:[-/.]|$)/],
+      ['xiaomi', /^mimo(?:[-/.]|$)/],
+      ['alibaba', /^qwen(?:[-/.]|$)/],
+    ]
+
+    function officialCatalogProviderForModel(id) {
+      const normalized = id.toLowerCase()
+      const bare = normalized.includes('/') ? normalized.slice(normalized.lastIndexOf('/') + 1) : normalized
+      return OFFICIAL_PROVIDER_RULES.find(([, rule]) => rule.test(normalized) || rule.test(bare))?.[0]
     }
 
-    function catalogModelForEndpoint(catalog, id, baseURL, api) {
-      const candidates = modelRecordCandidates(catalog, id)
-      if (candidates.length === 0) return undefined
-      let hostname = ''
-      try { hostname = new URL(baseURL).hostname.toLowerCase() } catch {}
-      const hostMatch = candidates.find(({ provider }) => typeof provider.id === 'string' && hostname.includes(provider.id.toLowerCase()))
-      if (hostMatch !== undefined) return hostMatch.model
-      const canonicalProvider = api === 'openai-responses'
-        ? 'openai'
-        : api === 'anthropic-messages'
-          ? 'anthropic'
-          : undefined
-      if (canonicalProvider !== undefined) {
-        const canonical = candidates.find(({ provider }) => provider.id === canonicalProvider)
-        if (canonical !== undefined) return canonical.model
+    function catalogModelIdVariants(id) {
+      const variants = [id]
+      if (id.includes('/')) variants.push(id.slice(id.lastIndexOf('/') + 1))
+      return [...new Set(variants)]
+    }
+
+    function catalogProviderModel(catalog, providerId, id) {
+      if (catalog === null || typeof catalog !== 'object') return undefined
+      for (const [providerKey, provider] of Object.entries(catalog)) {
+        if (provider === null || typeof provider !== 'object') continue
+        const currentProviderId = typeof provider.id === 'string' && provider.id !== '' ? provider.id : providerKey
+        if (currentProviderId !== providerId) continue
+        const models = provider.models
+        if (models === null || typeof models !== 'object') return undefined
+        for (const variant of catalogModelIdVariants(id)) {
+          const key = Object.keys(models).find(modelId => modelId === variant || modelId.toLowerCase() === variant.toLowerCase())
+          const model = key === undefined ? undefined : models[key]
+          if (model !== null && typeof model === 'object') return { providerId, modelId: key, model }
+        }
+        return undefined
       }
-      const fingerprints = new Set(candidates.map(({ model }) => modelMetadataFingerprint(model)))
-      return fingerprints.size === 1 ? candidates[0].model : undefined
+      return undefined
+    }
+
+    function catalogLimit(model, field) {
+      const limit = model !== null && typeof model === 'object'
+        && model.limit !== null && typeof model.limit === 'object' ? model.limit : {}
+      return positiveCatalogLimit(limit[field])
+    }
+
+    function catalogLimitText(model, field) {
+      const value = catalogLimit(model, field)
+      return value === undefined ? '?' : String(value)
+    }
+
+    function compareCatalogLimits(left, right, field) {
+      const leftValue = catalogLimit(left, field)
+      const rightValue = catalogLimit(right, field)
+      if (leftValue === undefined && rightValue === undefined) return 0
+      if (leftValue === undefined) return 1
+      if (rightValue === undefined) return -1
+      return leftValue - rightValue
+    }
+
+    function providerSelection(providerId) {
+      return `provider:${providerId}`
+    }
+
+    // Rank complete provider records; never combine fields from different providers.
+    function defaultCatalogCandidate(candidates) {
+      return [...candidates].sort((left, right) => {
+        const context = compareCatalogLimits(left.model, right.model, 'context')
+        if (context !== 0) return context
+        const output = compareCatalogLimits(left.model, right.model, 'output')
+        if (output !== 0) return output
+        return left.providerId.localeCompare(right.providerId)
+      })[0]
+    }
+
+    function catalogMatchForEndpoint(catalog, id) {
+      const exactCandidates = modelRecordCandidates(catalog, id)
+      const officialProvider = officialCatalogProviderForModel(id)
+      const official = officialProvider === undefined ? undefined : catalogProviderModel(catalog, officialProvider, id)
+      const exactOfficial = officialProvider === undefined
+        ? undefined
+        : exactCandidates.find(candidate => candidate.providerId === officialProvider)
+      const officialCandidate = exactOfficial ?? official
+      const candidates = official !== undefined && exactOfficial === undefined
+        ? [...exactCandidates, official]
+        : exactCandidates
+      if (officialCandidate !== undefined) {
+        return {
+          candidates,
+          selection: providerSelection(officialCandidate.providerId),
+          reason: 'official',
+          officialProvider,
+        }
+      }
+      if (candidates.length === 0) return { candidates, selection: undefined, reason: 'none' }
+      if (candidates.length === 1) {
+        return { candidates, selection: providerSelection(candidates[0].providerId), reason: 'unique' }
+      }
+      const defaultCandidate = defaultCatalogCandidate(candidates)
+      return {
+        candidates,
+        selection: defaultCandidate === undefined ? undefined : providerSelection(defaultCandidate.providerId),
+        reason: 'default',
+      }
+    }
+
+    function catalogRecordForSelection(match, selection) {
+      if (match === undefined) return undefined
+      const selected = selection === undefined ? match.selection : selection
+      const candidate = match.candidates.find(item => providerSelection(item.providerId) === selected)
+      return candidate === undefined ? match.candidates[0]?.model : candidate.model
     }
 
     function reasoningEffortsFromCatalog(model) {
@@ -285,8 +382,8 @@ window.__ModuleLoader__.load({
       return Object.keys(result).some(level => level !== 'off') ? result : undefined
     }
 
-    function enrichDiscoveredModel(candidate, catalog, baseURL, api) {
-      const record = catalogModelForEndpoint(catalog, candidate.id, baseURL, api)
+    function enrichDiscoveredModel(candidate, match, selection) {
+      const record = catalogRecordForSelection(match, selection)
       if (record === undefined) return { ...candidate }
       const limit = record.limit !== null && typeof record.limit === 'object' ? record.limit : {}
       const modalities = record.modalities !== null && typeof record.modalities === 'object' ? record.modalities : {}
@@ -485,14 +582,9 @@ window.__ModuleLoader__.load({
 
     function ReasoningEditor({ value, onChange, disabled, t }) {
       const [newLevel, setNewLevel] = useState('')
-      const mode = value === undefined ? 'inherit' : value === false ? 'disabled' : 'declared'
-      const efforts = mode === 'declared' ? value : {}
+      const declaredMode = value !== null && typeof value === 'object' && !Array.isArray(value)
+      const efforts = declaredMode ? value : {}
       const declared = Object.keys(efforts)
-      const changeMode = (next) => {
-        if (next === 'inherit') onChange(undefined)
-        else if (next === 'disabled') onChange(false)
-        else onChange({ low: 'low' })
-      }
       const changeWire = (level, wire) => {
         const next = { ...efforts }
         if (level === 'off') next.off = wire === '' ? null : wire
@@ -505,16 +597,9 @@ window.__ModuleLoader__.load({
         onChange({ ...efforts, [newLevel]: newLevel === 'off' ? null : newLevel })
         setNewLevel('')
       }
-      return h('div', { style: { display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '8px' } },
-        h(Field, { label: t('reasoning') }, h('select', {
-          style: inputStyle, value: mode, disabled, onChange: event => changeMode(event.target.value),
-        },
-        h('option', { value: 'inherit' }, t('inheritCatalog')),
-        h('option', { value: 'disabled' }, t('disableReasoning')),
-        h('option', { value: 'declared' }, t('declareEfforts')),
-        )),
-        mode === 'declared' ? h('div', { style: { display: 'flex', flexDirection: 'column', gap: '6px' } },
-          declared.map(level => h('div', { key: level, style: { display: 'grid', gridTemplateColumns: '90px minmax(0, 1fr) auto', gap: '6px', alignItems: 'center' } },
+      return h('div', { style: { display: 'flex', flexDirection: 'column', gap: '6px', paddingTop: '8px' } },
+        h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } }, t('reasoning')),
+        declaredMode ? declared.map(level => h('div', { key: level, style: { display: 'grid', gridTemplateColumns: '90px minmax(0, 1fr) auto', gap: '6px', alignItems: 'center' } },
             h('span', { style: { fontSize: '13px' } }, level),
             h('input', {
               style: inputStyle,
@@ -532,19 +617,24 @@ window.__ModuleLoader__.load({
                 onChange(next)
               },
             }, t('delete')),
-          )),
-          declared.length < EFFORTS.length ? h('div', { style: { display: 'flex', gap: '6px' } },
-            h('select', { style: inputStyle, value: newLevel, disabled, onChange: event => setNewLevel(event.target.value) },
-              h('option', { value: '' }, t('addLevel')),
-              EFFORTS.filter(level => !declared.includes(level)).map(level => h('option', { key: level, value: level }, level)),
-            ),
-            h('button', { type: 'button', style: buttonStyle, disabled: disabled || newLevel === '', onClick: add }, t('add')),
-          ) : null,
+          )) : null,
+        declared.length < EFFORTS.length ? h('div', { style: { display: 'flex', gap: '6px' } },
+          h('select', { style: inputStyle, value: newLevel, disabled, onChange: event => setNewLevel(event.target.value) },
+            h('option', { value: '' }, t('addLevel')),
+            EFFORTS.filter(level => !declared.includes(level)).map(level => h('option', { key: level, value: level }, level)),
+          ),
+          h('button', { type: 'button', style: buttonStyle, disabled: disabled || newLevel === '', onClick: add }, t('add')),
+        ) : null,
+        declaredMode ? h('div', { style: { display: 'flex', justifyContent: 'flex-end' } },
+          h('button', { type: 'button', style: buttonStyle, disabled, onClick: () => onChange(undefined) }, t('clearReasoning')),
         ) : null,
       )
     }
 
-    function ModelRow({ model, index, onChange, disabled, lockId = false, t }) {
+    function ModelRow({
+      model, index, onChange, disabled, lockId = false,
+      catalogChoice, catalogCandidates = [], catalogDefaultProvider, catalogOfficialProvider, onCatalogChoice, t,
+    }) {
       const patch = changes => {
         const next = { ...model, ...changes }
         for (const [key, value] of Object.entries(next)) if (value === undefined) delete next[key]
@@ -559,6 +649,34 @@ window.__ModuleLoader__.load({
       }
       return h('details', { style: { border: '1px solid var(--dsw-alias-border-l2)', borderRadius: '8px', padding: '8px' } },
         h('summary', { style: { cursor: 'pointer', fontSize: '14px' } }, typeof model.id === 'string' && model.id !== '' ? model.id : t('modelIndex', { index: index + 1 })),
+        catalogCandidates.length > 1 ? h('div', { style: { display: 'flex', flexDirection: 'column', gap: '5px', paddingTop: '10px' } },
+          h(Field, { label: t('catalogSource') }, h('select', {
+            style: inputStyle,
+            value: catalogChoice ?? '',
+            disabled,
+            onChange: event => onCatalogChoice?.(event.target.value),
+          }, catalogCandidates.map(candidate => h('option', {
+            key: candidate.providerId,
+            value: providerSelection(candidate.providerId),
+          }, candidate.providerId === catalogDefaultProvider
+            ? t('catalogDefault', {
+              provider: candidate.providerId,
+              context: catalogLimitText(candidate.model, 'context'),
+              output: catalogLimitText(candidate.model, 'output'),
+            })
+            : candidate.providerId === catalogOfficialProvider
+              ? t('catalogOfficial', {
+                provider: candidate.providerId,
+                context: catalogLimitText(candidate.model, 'context'),
+                output: catalogLimitText(candidate.model, 'output'),
+              })
+            : t('catalogProvider', {
+              provider: candidate.providerId,
+              context: catalogLimitText(candidate.model, 'context'),
+              output: catalogLimitText(candidate.model, 'output'),
+            }))))),
+          h('p', { style: { margin: 0, color: 'var(--dsw-alias-label-tertiary)', fontSize: '12px' } }, t('catalogSourceDescription')),
+        ) : null,
         h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', paddingTop: '10px' } },
           h(Field, { label: t('modelId') }, h('input', {
             style: inputStyle, value: typeof model.id === 'string' ? model.id : '', disabled: disabled || lockId,
@@ -600,6 +718,8 @@ window.__ModuleLoader__.load({
       const [candidates, setCandidates] = useState(undefined)
       const [selected, setSelected] = useState(new Set())
       const [modelDrafts, setModelDrafts] = useState({})
+      const [catalogMatches, setCatalogMatches] = useState({})
+      const [catalogSelections, setCatalogSelections] = useState({})
       const [busy, setBusy] = useState(false)
       const [failure, setFailure] = useState(undefined)
       const [catalogNotice, setCatalogNotice] = useState(undefined)
@@ -608,7 +728,7 @@ window.__ModuleLoader__.load({
       const keyRef = route === '' ? '' : `${route.toUpperCase()}_API_KEY`
       const nameError = endpoint.name.length === 0
         ? t('endpointNameRequired')
-        : /^[A-Za-z]+$/.test(endpoint.name) ? undefined : t('endpointNameInvalid')
+        : /^[A-Za-z][A-Za-z0-9]*$/.test(endpoint.name) ? undefined : t('endpointNameInvalid')
       const urlError = endpoint.baseURL.length === 0 ? t('endpointUrlRequired') : endpointUrlError(endpoint.baseURL, t)
       const keyError = apiKeyError(endpoint.apiKey, t)
       const requestHeadersError = headersError(endpoint.headers, t)
@@ -635,6 +755,8 @@ window.__ModuleLoader__.load({
         setCandidates(undefined)
         setSelected(new Set())
         setModelDrafts({})
+        setCatalogMatches({})
+        setCatalogSelections({})
         setFailure(undefined)
         setCatalogNotice(undefined)
       }
@@ -663,13 +785,37 @@ window.__ModuleLoader__.load({
             setFailure(t('discoveryEmpty'))
             return
           }
-          const enriched = catalog === undefined
-            ? models
-            : models.map(model => enrichDiscoveredModel(model, catalog, endpoint.baseURL.trim(), endpoint.api))
+          const prepared = catalog === undefined
+            ? models.map(candidate => ({ candidate, match: undefined }))
+            : models.map(candidate => {
+              const match = {
+                ...catalogMatchForEndpoint(catalog, candidate.id),
+                candidate,
+              }
+              return {
+                candidate: enrichDiscoveredModel(candidate, match, match.selection),
+                match,
+              }
+            })
+          const enriched = prepared.map(item => item.candidate)
           setCandidates(enriched)
           setSelected(new Set(enriched.map(model => model.id)))
           setModelDrafts(Object.fromEntries(enriched.map(model => [model.id, { ...model }])))
-          setCatalogNotice(t(catalog === undefined ? 'catalogUnavailable' : 'catalogApplied'))
+          setCatalogMatches(Object.fromEntries(prepared
+            .filter(item => item.match !== undefined)
+            .map(item => [item.candidate.id, item.match])))
+          setCatalogSelections(Object.fromEntries(prepared
+            .filter(item => item.match !== undefined)
+            .map(item => [item.candidate.id, item.match.selection])))
+          if (catalog === undefined) {
+            setCatalogNotice(t('catalogUnavailable'))
+          } else {
+            const matched = prepared.filter(item => item.match.reason !== 'none').length
+            const official = prepared.filter(item => item.match.reason === 'official').length
+            const ambiguous = prepared.filter(item => item.match.reason === 'default').length
+            const unmatched = prepared.length - matched
+            setCatalogNotice(t('catalogApplied', { matched, official, ambiguous, unmatched }))
+          }
         } catch (error) {
           setFailure(messageOf(error))
         } finally {
@@ -688,6 +834,22 @@ window.__ModuleLoader__.load({
         .filter(model => !current.has(model.id))
         .map(model => model.id)))
       const updateSelectedModel = (id, next) => setModelDrafts(current => ({ ...current, [id]: next }))
+      const chooseCatalogSelection = (id, selection) => {
+        const match = catalogMatches[id]
+        if (match === undefined || match.candidate === undefined) return
+        const previousSelection = catalogSelections[id] ?? match.selection
+        const previous = enrichDiscoveredModel(match.candidate, match, previousSelection)
+        const nextModel = enrichDiscoveredModel(match.candidate, match, selection)
+        const current = modelDrafts[id] ?? previous
+        const next = { ...current }
+        for (const field of ['name', 'contextWindow', 'maxTokens', 'input', 'reasoningEfforts']) {
+          if (!jsonEqual(current[field], previous[field])) continue
+          if (nextModel[field] === undefined) delete next[field]
+          else next[field] = nextModel[field]
+        }
+        setCatalogSelections(currentSelections => ({ ...currentSelections, [id]: selection }))
+        setModelDrafts(currentDrafts => ({ ...currentDrafts, [id]: next }))
+      }
       const save = async () => {
         setBusy(true)
         setFailure(undefined)
@@ -773,15 +935,27 @@ window.__ModuleLoader__.load({
           ))),
           selectedModels.length === 0 ? null : h('div', { style: { display: 'flex', flexDirection: 'column', gap: '8px' } },
             h('strong', { style: { fontSize: '13px' } }, t('selectedModelParameters')),
-            selectedModels.map((model, index) => h(ModelRow, {
-              key: model.id,
-              model,
-              index,
-              onChange: next => updateSelectedModel(model.id, next),
-              disabled: busy || profileCreated,
-              lockId: true,
-              t,
-            })),
+            selectedModels.map((model, index) => {
+              const match = catalogMatches[model.id]
+              const defaultProvider = match?.reason === 'default'
+                ? match.candidates.find(candidate => providerSelection(candidate.providerId) === match.selection)?.providerId
+                : undefined
+              const officialProvider = match?.reason === 'official' ? match.officialProvider : undefined
+              return h(ModelRow, {
+                key: model.id,
+                model,
+                index,
+                onChange: next => updateSelectedModel(model.id, next),
+                disabled: busy || profileCreated,
+                lockId: true,
+                catalogChoice: catalogSelections[model.id] ?? match?.selection,
+                catalogCandidates: match?.candidates,
+                catalogDefaultProvider: defaultProvider,
+                catalogOfficialProvider: officialProvider,
+                onCatalogChoice: next => chooseCatalogSelection(model.id, next),
+                t,
+              })
+            }),
           ),
         ),
         selectedModels.length === 0 ? null : h('div', { style: { display: 'flex', flexDirection: 'column', gap: '6px' } },

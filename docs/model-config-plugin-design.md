@@ -113,7 +113,16 @@ models:
 
 ### 4.4 发现结果的每模型参数回填
 
-`llm.discoverModels` 只披露 `id`/`name`/`contextWindow`/`maxTokens`，**不披露推理能力**。采纳发现结果后，推理强度由用户手工声明（picker 中每个待采纳模型默认不预填 effort）。这是 G1 的边界：发现是"候选"，参数是"声明"。
+`llm.discoverModels` 只披露 `id`/`name`/`contextWindow`/`maxTokens`，**不披露推理能力**。picker 另从匹配到的 `models.dev` 记录读取推理信息：`reasoning: false` 写为 `reasoningEfforts: false`，可识别的 effort 选项写为 `reasoningEfforts` dict，没有推理信息时保持字段省略。用户可手动添加或编辑 effort；不提供“继承/禁用/声明”模式下拉框。这是 G1 的边界：发现是"候选"，参数是"声明"。
+
+### 4.5 models.dev 目录匹配
+
+目录补全只在发现候选进入 picker 时执行，且一个目录记录是不可拆分的 provider 选择。匹配顺序固定为两层：
+
+1. **模型名称识别官方 provider**：从模型 ID 的规范名称或 provider 前缀识别官方 provider；例如 `deepseek-*` → `deepseek`、`gpt-*`/`o1*`/`o3*`/`o4*` → `openai`、`grok-*`/`x-ai/grok-*`/`xai/grok-*`/`grok/grok-*` → `xai`、`claude-*` → `anthropic`、`gemini-*` → `google`。只有该 provider 存在同 ID 或去掉已知 provider 前缀后的目录 ID 时才采用；这一步只选择元数据来源，不改写发给端点的模型 ID。
+2. **默认 provider 选择**：官方 provider 没有对应目录记录时，在所有精确 ID 候选中按完整记录排序，先比较 `contextWindow` 升序，再比较 `maxTokens` 升序，最后按 provider ID 稳定排序，选择一条完整记录。缺失容量排在有容量的记录之后；不把不同 provider 的字段合成一条记录。
+
+模型 ID 没有目录记录时不做模糊匹配，保持发现结果可编辑。用户可在 picker 中选择其他完整 provider 记录；切换来源会整体替换该模型的目录字段，手工改过的字段保持用户值。endpoint hostname 与 API 协议不再覆盖模型名称识别结果，因为聚合代理的 hostname 和协议通常不能证明真实上游 provider。
 
 ## 5. 端到端流程设计
 
@@ -131,6 +140,8 @@ models:
 
 "拉取模型"针对**表单当前值**发起 `llm.discoverModels`（含未保存的 baseURL、未存储的键），回复进 picker（候选，不直接写入）；已配置候选默认不选中，采纳不覆盖用户调优过的容量。拉取失败（`DISCOVERY_FAILED`/`NO_DISCOVERY`/`DISCOVERY_UNSUPPORTED`/`INVALID_CREDENTIAL`）在行内显示 adapter 的消息，模型行保持手编可编辑。
 
+发现候选的 `models.dev` 回填遵循 4.5 的两层匹配：模型名称命中官方 provider 时采用该 provider 的完整记录，否则采用默认的完整 provider 记录。picker 必须显示多候选的 provider 来源，且来源切换是记录级替换，不允许从不同 provider 分别取上下文、输出、输入或 reasoning 字段。
+
 ### 5.4 每模型参数编辑（G1，新增）
 
 `ModelListEditor` 每行 disclosure 在既有上下文/输出字段之上增加推理强度区：
@@ -139,10 +150,10 @@ models:
 |---|---|---|
 | 上下文大小 | 计数输入（`K`/`M` 后缀，存纯计数） | draft 内编辑，随整组 `models` 数组一次落盘 |
 | 最大输出长度 | 同上 | 同上 |
-| 推理强度 | 三态开关（继承/禁用/声明）+ 级别行列表：级别名 + wire 拼写输入 | 同上 |
+| 推理强度 | models.dev 回填的级别行列表；未声明时可通过“添加级别”控件创建；级别名 + wire 拼写输入 | 同上 |
 
 - **落盘形态与既有编辑器一致**：持 draft 数组，一次 `settings.mutate` 写整组 `models`（或重置时 unset 该数组）——逐索引 path op 在数组位移时脆弱，不使用。
-- 推理强度三态：省略（继承 catalog 能力）/ `false`（非推理模型）/ 声明 dict。声明 dict 时只渲染**已声明**级别 + 一个"添加级别"入口，级别候选读自命名空间 schema 的 dict 键约束（见 4.3），排除已声明者；省略某级别即"不支持"，不做隐式默认。
+- 推理强度由目录记录或用户声明决定：目录明确非推理时写 `false`，目录提供 effort 时写声明 dict，目录没有推理信息时保持省略。省略或 `false` 时仍渲染“添加级别”控件，用户选择一个级别后才创建声明 dict；声明 dict 时渲染**已声明**级别、同一“添加级别”入口和清除覆盖按钮。级别候选读自命名空间 schema 的 dict 键约束（见 4.3），排除已声明者；省略某级别即"不支持"，不做隐式默认。
 - `off` 三态 UI：不声明（无行）/ 空值行（`off:`，按方言映射）/ 带值行。清空非 `off` 级别的拼写 = 删除该级别行（unset），不写空串——空串与空 dict 都是被拒绝的非法值。
 - 校验在 draft 上先行（重复 id、非法级别、`off` 之外空值、非正整数容量），写入前再经 schema；行内报错。
 - 继承视图：`base` 层的 models 数组在用户层未覆盖时以继承态显示；首次编辑把完整数组物化进用户层；重置 = unset 该数组。
@@ -166,7 +177,8 @@ models:
 | D3 | 每模型推理强度落在 `reasoningEfforts`（pi-ai 语义）；deepseek 按需扩展单字段 | 级别是 opaque id、wire 拼写适配器拥有；off 三态不可用空值消除 | [pi-ai catalog 语义](../deepseek-harness/packages/llm/llm-pi-ai/README.md#catalog-resolution) |
 | D4 | 树内形态演进 `ui-settings-models`；独立插件形态注册自己的 section，互斥由 profile 层禁用 `ui-settings-models` 行实现 | 双模型页互相漂移；槽位是唯一组合通道 | [ui-settings README](../deepseek-harness/packages/client/ui-settings/README.md) |
 | D5 | UI 手写卡片而非 schema 通用渲染器 | 通用渲染器已被实现并否决：无层次、不可用 | [web-config-plane 笔记](../deepseek-harness/.agents/notes/implemented/architecture/2026-07-30-web-config-plane.md) |
-| D6 | 发现结果不自动回填推理强度 | 发现只披露 id/容量，回填即猜测；声明是用户决定 | [pi-ai 发现语义](../deepseek-harness/packages/llm/llm-pi-ai/README.md#endpoint-interrogation) |
+| D6 | 推理能力仅从匹配目录记录回填，缺失时保持省略 | 发现端点本身不披露 effort；无目录事实时不猜测，用户可手工声明 | [pi-ai 发现语义](../deepseek-harness/packages/llm/llm-pi-ai/README.md#endpoint-interrogation) |
+| D7 | 目录歧义按官方 provider 优先、整条默认记录回退 | 聚合代理不能由 hostname 证明上游；跨 provider 拼字段会制造不存在的能力组合 | 本文 4.5 |
 
 ## 7. 错误处理与安全
 
@@ -191,15 +203,16 @@ models:
 ## 10. 验证方案
 
 - **单元**：schema 校验（重复 id、`reasoningEfforts` 非法形态、off 三态）、解析拒绝、draft → path op 生成、容量 `K/M` 解析与最短回写、凭据派生与 ownership 判定。
+- **目录匹配**：官方模型名命中 provider、带 provider 前缀的别名归一化、官方记录缺失时整条记录的最小排序、切换 provider 不跨记录拼字段、未知 ID 保持手工编辑。
 - **REAL-composition**：boot 测试专用 cordis.yml 经 Loader 与 app/process 装载，断言"写 profile → 路由注册 → `llm.providers` 目录生效 → 下一次请求使用新配置"。
-- **组件（jsdom）**：ProviderCard 门控、拉取携带表单当前值、picker 采纳不覆盖调优行、每模型 effort 编辑与 unset、冲突重试、只读姿态。
+- **组件（jsdom）**：ProviderCard 门控、拉取携带表单当前值、picker 采纳不覆盖调优行、目录推理回填、手动添加或清除每模型 effort、冲突重试、只读姿态。
 - **e2e 快照（keyless）**：仿照 `apps/web/tests/models-settings.e2e.ts` 钉死"新增自定义端点 → 拉取 → 配置每模型参数 → 设置页渲染"全链路，scaffold `harnessHome`。
 - **覆盖门**：client 包进每文件 100% 覆盖门；`test:gui` + `DSH_SNAPSHOT=replay test:web`。
 
 ## 11. 已知限制与后续
 
 - 拉取仅覆盖 OpenAI-compatible `GET /models`；其他协议手编。
-- 每模型 effort 仅对已声明级别可编辑；catalog 继承级别不可见（省略 = 沿用 catalog，无法在 UI 中"取消声明"）。
+- 目录没有 effort 信息时 UI 不猜测能力；用户手动声明后只提供其已添加的级别。
 - 独立插件形态与 `ui-settings-models` 互斥（D4）：共存时双页面由同一命名空间驱动，修改相互可见但 UX 重复。
 - schema-generic 的"高级参数"（retryPolicy、超时等）延续既有姿态：留在 `settings.yaml`。
 
