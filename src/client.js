@@ -51,6 +51,19 @@ window.__ModuleLoader__.load({
       endpointNamePlaceholder: 'AcmeGateway',
       endpointUrl: 'Endpoint URL',
       apiProtocol: 'API protocol',
+      headers: 'Custom headers',
+      headersDescription: 'These headers are sent when calling models, but not when fetching the model list. Store API keys and other secrets in credential settings.',
+      inheritedHeaders: 'Inherited headers',
+      inheritedHeadersDescription: 'These headers come from the default configuration. Add a header with the same name below to change its value. To remove it, edit the default configuration.',
+      headerName: 'Header name',
+      headerValue: 'Header content',
+      headerNamePlaceholder: 'X-Custom-Header',
+      headerValuePlaceholder: 'value',
+      addHeader: 'Add header',
+      headerNameRequired: 'Enter a header name.',
+      headerNameInvalid: 'The header name has an invalid format. Use letters, numbers, and standard symbols only.',
+      headerNameDuplicate: 'Duplicate header name: {name}',
+      headerValueInvalid: 'The header content contains unsupported characters. Remove emoji, null characters, and line breaks.',
       endpointKey: 'API key',
       endpointKeyPlaceholder: 'Used only to fetch models and store the credential',
       endpointNameRequired: 'Enter an endpoint name.',
@@ -71,7 +84,7 @@ window.__ModuleLoader__.load({
       selectNone: 'Select none',
       selectedModelParameters: 'Selected model parameters',
       configPreview: 'Configuration preview',
-      keyPreviewNotice: 'The API key never appears in this preview or settings configuration. Confirmation writes it only to credential storage.',
+      keyPreviewNotice: 'The API key is saved separately and is not shown here. Header content is saved in settings, but is not sent when fetching the model list.',
       cancel: 'Cancel',
       confirmSave: 'Confirm and save',
       retryKey: 'Retry saving API key',
@@ -130,6 +143,19 @@ window.__ModuleLoader__.load({
       endpointNamePlaceholder: 'AcmeGateway',
       endpointUrl: '端点 URL',
       apiProtocol: 'API 协议',
+      headers: '自定义 Header',
+      headersDescription: '这些 Header 会在调用模型时发送，但获取模型列表时不会发送。API Key 等敏感信息请保存在密钥设置中。',
+      inheritedHeaders: '继承的 Header',
+      inheritedHeadersDescription: '这些 Header 来自默认配置。若要修改，请在下方添加同名 Header；若要删除，请修改默认配置。',
+      headerName: 'Header 名称',
+      headerValue: 'Header 内容',
+      headerNamePlaceholder: 'X-Custom-Header',
+      headerValuePlaceholder: '值',
+      addHeader: '添加 Header',
+      headerNameRequired: '请填写 Header 名称。',
+      headerNameInvalid: 'Header 名称格式不正确，请只使用字母、数字和常用符号。',
+      headerNameDuplicate: 'Header 名称重复：{name}',
+      headerValueInvalid: 'Header 内容包含不支持的字符，请移除表情、空字符和换行符。',
       endpointKey: 'API Key',
       endpointKeyPlaceholder: '仅用于获取模型和保存凭据',
       endpointNameRequired: '请填写端点名称。',
@@ -150,7 +176,7 @@ window.__ModuleLoader__.load({
       selectNone: '全不选',
       selectedModelParameters: '已选模型参数',
       configPreview: '配置预览',
-      keyPreviewNotice: 'API Key 不会出现在预览或 settings 配置中；确认后仅写入凭据存储。',
+      keyPreviewNotice: 'API Key 会单独保存，不会显示在这里。Header 内容会写入配置，但获取模型列表时不会发送。',
       cancel: '取消',
       confirmSave: '确认并保存',
       retryKey: '重试保存 API Key',
@@ -293,6 +319,55 @@ window.__ModuleLoader__.load({
       return current
     }
 
+    function headerRows(value) {
+      if (value === null || typeof value !== 'object' || Array.isArray(value)) return []
+      return Object.entries(value)
+        .filter(([, headerValue]) => typeof headerValue === 'string')
+        .map(([name, headerValue]) => ({ name, value: headerValue }))
+    }
+
+    function headersObject(rows, inherited = []) {
+      const canonical = new Map(inherited.map(row => [row.name.toLowerCase(), row.name]))
+      return Object.fromEntries(rows
+        .map(row => [
+          typeof row.name === 'string' ? row.name.trim() : '',
+          typeof row.value === 'string' ? row.value : '',
+        ])
+        .map(([name, value]) => [canonical.get(name.toLowerCase()) ?? name, value])
+        .filter(([name]) => name !== ''))
+    }
+
+    function headersEqual(left, right) {
+      const leftNames = Object.keys(left).sort()
+      const rightNames = Object.keys(right).sort()
+      if (leftNames.length !== rightNames.length) return false
+      return leftNames.every(name => left[name] === right[name])
+        && rightNames.every(name => left[name] === right[name])
+    }
+
+    function headersError(rows, t) {
+      const names = new Set()
+      for (const row of rows) {
+        const name = typeof row.name === 'string' ? row.name.trim() : ''
+        if (name === '') return t('headerNameRequired')
+        if (!/^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/.test(name)) return t('headerNameInvalid')
+        const normalized = name.toLowerCase()
+        if (names.has(normalized)) return t('headerNameDuplicate', { name })
+        names.add(normalized)
+        if (typeof row.value !== 'string') return t('headerValueInvalid')
+        try {
+          new Headers([[name, row.value]])
+        } catch {
+          return t('headerValueInvalid')
+        }
+      }
+      return undefined
+    }
+
+    function jsonEqual(left, right) {
+      return JSON.stringify(left) === JSON.stringify(right)
+    }
+
     function copyModel(model) {
       return model !== null && typeof model === 'object' && !Array.isArray(model) ? { ...model } : { id: '' }
     }
@@ -375,6 +450,36 @@ window.__ModuleLoader__.load({
       return h('label', { style: { display: 'flex', flexDirection: 'column', gap: '5px', minWidth: 0 } },
         h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } }, label),
         children,
+      )
+    }
+
+    function HeaderEditor({
+      value, onChange, disabled, error, t,
+      title = 'headers', description = 'headersDescription', addable = true, removable = true,
+    }) {
+      const patch = (index, changes) => onChange(value.map((row, at) => at === index ? { ...row, ...changes } : row))
+      const remove = index => onChange(value.filter((_, at) => at !== index))
+      const add = () => onChange([...value, { name: '', value: '' }])
+      return h('div', { style: { display: 'flex', flexDirection: 'column', gap: '8px' } },
+        h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' } },
+          h('strong', { style: { fontSize: '13px' } }, t(title)),
+          addable ? h('button', { type: 'button', style: buttonStyle, disabled, onClick: add }, t('addHeader')) : null,
+        ),
+        h('p', { style: { margin: 0, color: 'var(--dsw-alias-label-tertiary)', fontSize: '12px' } }, t(description)),
+        value.map((row, index) => h('div', { key: index, style: { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1.5fr) auto', gap: '6px', alignItems: 'center' } },
+          h('input', {
+            style: inputStyle, value: row.name, disabled,
+            'aria-label': t('headerName'), placeholder: t('headerNamePlaceholder'),
+            onChange: event => patch(index, { name: event.target.value }),
+          }),
+          h('input', {
+            style: inputStyle, value: row.value, disabled,
+            'aria-label': t('headerValue'), placeholder: t('headerValuePlaceholder'),
+            onChange: event => patch(index, { value: event.target.value }),
+          }),
+          removable ? h('button', { type: 'button', style: buttonStyle, disabled, onClick: () => remove(index) }, t('delete')) : h('span'),
+        )),
+        error === undefined ? null : h('p', { style: { margin: 0, color: 'var(--dsw-alias-state-error-primary)', fontSize: '12px' } }, error),
       )
     }
 
@@ -491,7 +596,7 @@ window.__ModuleLoader__.load({
     }
 
     function NewEndpointCard({ api, namespace, taken, writable, onCancel, onSaved, t }) {
-      const [endpoint, setEndpoint] = useState({ name: '', baseURL: '', api: 'openai-completions', apiKey: '' })
+      const [endpoint, setEndpoint] = useState({ name: '', baseURL: '', api: 'openai-completions', apiKey: '', headers: [] })
       const [candidates, setCandidates] = useState(undefined)
       const [selected, setSelected] = useState(new Set())
       const [modelDrafts, setModelDrafts] = useState({})
@@ -506,8 +611,10 @@ window.__ModuleLoader__.load({
         : /^[A-Za-z]+$/.test(endpoint.name) ? undefined : t('endpointNameInvalid')
       const urlError = endpoint.baseURL.length === 0 ? t('endpointUrlRequired') : endpointUrlError(endpoint.baseURL, t)
       const keyError = apiKeyError(endpoint.apiKey, t)
+      const requestHeadersError = headersError(endpoint.headers, t)
       const routeTaken = taken.includes(route)
-      const readyToFetch = nameError === undefined && urlError === undefined && keyError === undefined && !routeTaken
+      const readyToFetch = nameError === undefined && urlError === undefined && keyError === undefined
+        && requestHeadersError === undefined && !routeTaken
       const selectedModels = candidates === undefined ? [] : candidates
         .filter(model => selected.has(model.id))
         .map(model => modelDrafts[model.id] ?? { ...model })
@@ -517,6 +624,7 @@ window.__ModuleLoader__.load({
         api: endpoint.api,
         baseURL: endpoint.baseURL.trim(),
         models: selectedModels.map(copyModel),
+        ...Object.keys(headersObject(endpoint.headers)).length === 0 ? {} : { headers: headersObject(endpoint.headers) },
       }
       const preview = {
         'llm-pi-ai': { providers: { [route]: profile } },
@@ -632,6 +740,13 @@ window.__ModuleLoader__.load({
         h('option', { value: 'openai-responses' }, 'openai-responses'),
         h('option', { value: 'anthropic-messages' }, 'anthropic-messages'),
         )),
+        h(HeaderEditor, {
+          value: endpoint.headers,
+          onChange: headers => update('headers', headers),
+          disabled: busy || profileCreated,
+          error: requestHeadersError,
+          t,
+        }),
         h(Field, { label: t('endpointKey') }, h('input', {
           style: inputStyle, type: 'password', autoComplete: 'off', value: endpoint.apiKey, disabled: busy,
           placeholder: t('endpointKeyPlaceholder'), onChange: event => {
@@ -639,7 +754,7 @@ window.__ModuleLoader__.load({
             else update('apiKey', event.target.value)
           },
         })),
-        keyError !== undefined && endpoint.apiKey.length > 0 ? h('p', { style: { margin: 0, color: 'var(--dsw-alias-state-error-primary)', fontSize: '12px' } }, keyError) : null,
+        keyError !== undefined ? h('p', { style: { margin: 0, color: 'var(--dsw-alias-state-error-primary)', fontSize: '12px' } }, keyError) : null,
         h('div', { style: { display: 'flex', justifyContent: 'flex-end', gap: '8px' } },
           h('button', { type: 'button', style: buttonStyle, disabled: busy || !readyToFetch || profileCreated, onClick: () => { void fetchModels() } }, busy ? t('fetching') : t('fetchModels')),
         ),
@@ -693,6 +808,7 @@ window.__ModuleLoader__.load({
       const [state, setState] = useState({ status: 'loading' })
       const [provider, setProvider] = useState('')
       const [draft, setDraft] = useState([])
+      const [headerDraft, setHeaderDraft] = useState([])
       const [draftRevision, setDraftRevision] = useState(-1)
       const [saving, setSaving] = useState(false)
       const [notice, setNotice] = useState(undefined)
@@ -721,6 +837,10 @@ window.__ModuleLoader__.load({
       const activeProvider = providers.includes(provider) ? provider : providers[0]
       const profile = activeProvider === undefined ? undefined : profiles[activeProvider]
       const effectiveModels = profile !== null && typeof profile === 'object' && Array.isArray(profile.models) ? profile.models.map(copyModel) : []
+      const userProfile = activeProvider === undefined ? undefined : objectAt(namespace?.user, ['providers', activeProvider])
+      const baseProfile = activeProvider === undefined ? undefined : objectAt(namespace?.base, ['providers', activeProvider])
+      const userHeaders = userProfile !== null && typeof userProfile === 'object' ? headerRows(userProfile.headers) : []
+      const baseHeaders = baseProfile !== null && typeof baseProfile === 'object' ? headerRows(baseProfile.headers) : []
       const namespaceRevision = namespace?.revision
 
       useEffect(() => {
@@ -728,9 +848,10 @@ window.__ModuleLoader__.load({
         if (provider === activeProvider && draftRevision === namespaceRevision) return
         setProvider(activeProvider)
         setDraft(effectiveModels)
+        setHeaderDraft(userHeaders)
         setDraftRevision(namespaceRevision)
         setNotice(undefined)
-      }, [activeProvider, draftRevision, effectiveModels, namespaceRevision, provider])
+      }, [activeProvider, draftRevision, effectiveModels, namespaceRevision, provider, userHeaders])
 
       if (state.status === 'loading') return h('p', null, t('loading'))
       if (state.status === 'error') return h('p', { style: { color: 'var(--dsw-alias-state-error-primary)' } }, state.message)
@@ -741,11 +862,15 @@ window.__ModuleLoader__.load({
         )
       }
 
-      const userModels = activeProvider === undefined ? undefined : objectAt(namespace.user, ['providers', activeProvider, 'models'])
+      const userModels = userProfile !== null && typeof userProfile === 'object' ? userProfile.models : undefined
       const overridden = Array.isArray(userModels)
-      const baseProfile = activeProvider === undefined ? undefined : objectAt(namespace.base, ['providers', activeProvider])
       const canRestoreInheritance = overridden && baseProfile !== null && typeof baseProfile === 'object'
       const models = provider === activeProvider && draftRevision === namespace.revision ? draft : effectiveModels
+      const requestHeaders = provider === activeProvider && draftRevision === namespace.revision ? headerDraft : userHeaders
+      const modelsChanged = provider === activeProvider && draftRevision === namespace.revision
+        && !jsonEqual(draft, effectiveModels)
+      const headersChanged = provider === activeProvider && draftRevision === namespace.revision
+        && !headersEqual(headersObject(headerDraft, baseHeaders), headersObject(userHeaders, baseHeaders))
 
       const selectProvider = next => {
         const nextProfile = profiles[next]
@@ -753,12 +878,15 @@ window.__ModuleLoader__.load({
         setDraft(nextProfile !== null && typeof nextProfile === 'object' && Array.isArray(nextProfile.models)
           ? nextProfile.models.map(copyModel)
           : [])
+        const nextUserProfile = objectAt(namespace.user, ['providers', next])
+        setHeaderDraft(nextUserProfile !== null && typeof nextUserProfile === 'object' ? headerRows(nextUserProfile.headers) : [])
         setDraftRevision(namespace.revision)
         setNotice(undefined)
       }
 
       const updateModel = (index, next) => setDraft(current => current.map((model, at) => at === index ? next : model))
       const save = async () => {
+        if (!modelsChanged && !headersChanged) return
         if (draftRevision !== namespace.revision) {
           setNotice({ error: t('draftReloading') })
           return
@@ -768,12 +896,26 @@ window.__ModuleLoader__.load({
           setNotice({ error })
           return
         }
+        const requestHeadersError = headersError(headerDraft, t)
+        if (requestHeadersError !== undefined) {
+          setNotice({ error: requestHeadersError })
+          return
+        }
         setSaving(true)
         setNotice(undefined)
         try {
+          const ops = modelsChanged
+            ? [{ op: 'set', path: ['providers', activeProvider, 'models'], value: draft }]
+            : []
+          if (headersChanged) {
+            const nextHeaders = headersObject(headerDraft, baseHeaders)
+            ops.push(Object.keys(nextHeaders).length === 0
+              ? { op: 'unset', path: ['providers', activeProvider, 'headers'] }
+              : { op: 'set', path: ['providers', activeProvider, 'headers'], value: nextHeaders })
+          }
           const response = await api.settings.mutate({
             ns: 'llm-pi-ai',
-            ops: [{ op: 'set', path: ['providers', activeProvider, 'models'], value: draft }],
+            ops,
             expectedRevision: namespace.revision,
           })
           if (!response.result.ok) {
@@ -810,6 +952,12 @@ window.__ModuleLoader__.load({
           setSaving(false)
         }
       }
+      const discard = () => {
+        setDraft(effectiveModels)
+        setHeaderDraft(userHeaders)
+        setDraftRevision(namespace.revision)
+        setNotice(undefined)
+      }
 
       return h('section', { style: sectionStyle },
         h('div', null,
@@ -823,6 +971,24 @@ window.__ModuleLoader__.load({
             style: inputStyle, value: activeProvider, disabled: saving,
             onChange: event => selectProvider(event.target.value),
           }, providers.map(id => h('option', { key: id, value: id }, id)))),
+          baseHeaders.length === 0 ? null : h(HeaderEditor, {
+            value: baseHeaders,
+            onChange: () => {},
+            disabled: true,
+            error: undefined,
+            t,
+            title: 'inheritedHeaders',
+            description: 'inheritedHeadersDescription',
+            addable: false,
+            removable: false,
+          }),
+          h(HeaderEditor, {
+            value: requestHeaders,
+            onChange: setHeaderDraft,
+            disabled: saving || !state.writable,
+            error: headersError(headerDraft, t),
+            t,
+          }),
           h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' } },
             h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-tertiary)' } }, overridden ? t('inheritedModels') : t('materializedModels')),
             canRestoreInheritance ? h('button', { type: 'button', style: buttonStyle, disabled: saving || !state.writable, onClick: reset }, t('restoreInheritance')) : null,
@@ -836,11 +1002,12 @@ window.__ModuleLoader__.load({
           notice?.error !== undefined ? h('p', { style: { margin: 0, color: 'var(--dsw-alias-state-error-primary)', fontSize: '13px' } }, notice.error) : null,
           notice?.success !== undefined ? h('p', { style: { margin: 0, color: 'var(--dsw-alias-state-success-primary)', fontSize: '13px' } }, notice.success) : null,
           h('div', { style: { display: 'flex', justifyContent: 'flex-end', gap: '8px' } },
-            h('button', { type: 'button', style: buttonStyle, disabled: saving, onClick: () => controller.refresh() }, t('discardReload')),
+            h('button', { type: 'button', style: buttonStyle, disabled: saving, onClick: discard }, t('discardReload')),
             h('button', {
               type: 'button',
               style: { ...buttonStyle, background: 'var(--dsw-alias-button-primary-fill)', color: 'var(--dsw-alias-label-primary-foreground)', borderColor: 'transparent' },
-              disabled: saving || !state.writable || models.length === 0,
+              disabled: saving || !state.writable || (!modelsChanged && !headersChanged)
+                || (modelsChanged && models.length === 0) || headersError(headerDraft, t) !== undefined,
               onClick: () => { void save() },
             }, saving ? t('saving') : t('save')),
           ),

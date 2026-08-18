@@ -7,12 +7,15 @@ Adds an Advanced Model Configuration page to the [DeepSeek Harness](https://gith
 ## Features
 
 - Create custom endpoints with a name, URL, API key, and protocol.
+- Configure provider-level custom request headers for model requests.
 - Supports `openai-completions`, `openai-responses`, and `anthropic-messages`.
 - Fetch candidate models through a unified `GET /models` flow, with select all, invert selection, and select none actions.
 - Completes missing context windows, maximum output, input modalities, and reasoning capabilities from `models.dev`.
 - Edit each selected model's capacity, text/image input support, and `reasoningEfforts`; review a configuration preview before saving.
 - Chinese and English UI copy follows the Harness language setting.
 - API keys are written only through Harness credential storage, never to `settings.yaml` or the configuration preview.
+
+Custom headers apply only to model requests. **Fetch available models** still uses the API key.
 
 ## Install
 
