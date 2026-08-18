@@ -142,7 +142,7 @@ models:
 - **恢复继承**：已存在用户层 `models` 覆盖且存在 base 模型列表时，编辑器保留“恢复继承”动作，显式执行 `unset providers.<route>.models`，恢复 base 层模型列表。
 - **删除端点**：已保存端点在端点选择栏旁提供删除动作，确认后以 `unset providers.<route>` 删除用户层配置；只有 `apiKeyEnv` 等于插件按 route 派生的 `<ROUTE>_API_KEY` 时才同步删除凭据，用户自定义凭据引用不会被自动删除。
 - **端点高级参数**：编辑器暴露自定义/继承 Header、`defaultContextWindow`、`defaultMaxTokens`、`defaultInput`、默认 `reasoning`、`thinkingBudgets`、`compat`、`cacheRetention`、`transport`、`timeoutMs`、`websocketConnectTimeoutMs`、`streamIdleTimeoutMs` 和 `retryPolicy`；字段默认为空，空值不写入最终 profile，已存在的用户层值重置后使用 `unset`。
-- **保存**：新增模式写入整段 profile；编辑模式只写入发生变化的 displayName、api、baseURL、models、headers 和必要的 apiKeyEnv 字段，并携带 `expectedRevision`。只有保存成功后才调用 `onSaved` 刷新设置快照。
+- **保存**：新增模式写入整段 profile；编辑模式只写入发生变化的 displayName、api、baseURL、models、headers、端点高级参数和必要的 apiKeyEnv 字段，并携带 `expectedRevision`。空数组和空对象与空值相同，新增时不写入，编辑时 `unset`。只有保存成功后才调用 `onSaved` 刷新设置快照。
 - **布局**：顶部选择已保存端点或进入“新增端点”；两种模式下端点字段、重新拉取、模型选择、参数编辑、配置预览和保存按钮位置一致。模型列表加载后，即使没有勾选模型或端点高级参数折叠，配置预览仍实时显示端点高级参数。
 
 ### 5.3 拉取模型

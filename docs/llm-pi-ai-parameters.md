@@ -230,9 +230,9 @@ retryPolicy:
 
 | 场景 | 行为 |
 |---|---|
-| 新增端点高级参数为空 | 不写入 profile，使用 adapter/schema 默认行为。 |
+| 新增端点高级参数为空 | 不写入 profile，使用 adapter/schema 默认行为。空数组和空对象也视为空。 |
 | 编辑端点时不修改参数 | 不生成对应 settings op。 |
-| 编辑端点后清空参数 | 对应字段使用 `unset`，恢复 base 或 schema 默认值。 |
+| 编辑端点后清空参数 | 对应字段使用 `unset`，恢复 base 或 schema 默认值。空数组和空对象也视为清空。 |
 | 显式配置模型 `maxTokens` | 既声明模型能力，也成为请求默认输出上限。 |
 | 只继承 catalog 的 `maxTokens` | 只作为模型能力，不自动成为请求默认值。 |
 | `models` 非空 | 替换 route 的完整模型列表。 |

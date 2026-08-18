@@ -19,7 +19,22 @@ Adds an Advanced Model Configuration page to the [DeepSeek Harness](https://gith
 
 See the [llm-pi-ai parameter reference](docs/llm-pi-ai-parameters.md) for the complete configuration table.
 
-Custom headers apply only to model requests. **Fetch available models** still uses the API key.
+**Open settings**
+<img width="1666" height="810" alt="image" src="https://github.com/user-attachments/assets/945e6566-dca2-45ca-bcc3-4609ea47f079" />
+
+**Add an endpoint**
+Enter the endpoint name, BASE_URL, and API key, then fetch models and check the ones you want:
+<img width="1746" height="1580" alt="image" src="https://github.com/user-attachments/assets/828f36ea-8a7d-4021-9dbb-253d60a1e949" />
+
+**Fill in remaining parameters**
+1. Endpoint advanced parameters: the defaults are usually fine. Custom headers apply only to model requests; **Fetch available models** still uses the API key.
+
+<img width="1712" height="1613" alt="image" src="https://github.com/user-attachments/assets/e185563c-4b89-468f-8463-49463c5b6e41" />
+
+2. Model parameters: mainly check the context window and maximum output length.
+<img width="1744" height="1628" alt="image" src="https://github.com/user-attachments/assets/a9a1e123-1e78-4435-addc-02ded574ba83" />
+
+Model parameters are usually filled in automatically, as long as [https://models.dev](https://models.dev) is reachable.
 
 ## Install
 
