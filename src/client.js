@@ -6,6 +6,12 @@ window.__ModuleLoader__.load({
 
     const NS = 'settings.modelConfig'
     const EFFORTS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']
+    const THINKING_FORMATS = ['openai', 'deepseek', 'openrouter', 'together', 'zai', 'qwen', 'string-thinking', 'ant-ling']
+    const PROVIDER_ADVANCED_FIELDS = [
+      'defaultContextWindow', 'defaultMaxTokens', 'defaultInput', 'reasoning', 'thinkingBudgets',
+      'compat', 'cacheRetention', 'transport', 'timeoutMs', 'websocketConnectTimeoutMs',
+      'streamIdleTimeoutMs', 'retryPolicy',
+    ]
     const MODELS_DEV_METADATA_URL = 'https://models.dev/api.json'
     let modelsDevMetadataPromise
     const en = {
@@ -33,7 +39,7 @@ window.__ModuleLoader__.load({
       wireLabel: '{level} wire spelling',
       delete: 'Delete',
       addLevel: 'Add effort',
-      clearReasoning: 'Clear reasoning override',
+      clearReasoning: 'Clear reasoning levels',
       add: 'Add',
       modelIndex: 'Model {index}',
       modelId: 'Model ID',
@@ -50,6 +56,35 @@ window.__ModuleLoader__.load({
       endpointNamePlaceholder: 'AcmeGateway',
       endpointUrl: 'Endpoint URL',
       apiProtocol: 'API protocol',
+      endpointAdvanced: 'Endpoint advanced parameters',
+      endpointAdvancedDescription: 'Optional defaults and transport controls. Blank values use the default behavior.',
+      defaultContextWindow: 'Default context window',
+      defaultMaxTokens: 'Default max output tokens',
+      defaultInput: 'Default input modalities',
+      defaultReasoning: 'Default reasoning effort',
+      thinkingBudgets: 'Thinking budgets',
+      budgetMinimal: 'Minimal budget',
+      budgetLow: 'Low budget',
+      budgetMedium: 'Medium budget',
+      budgetHigh: 'High budget',
+      compat: 'Reasoning compatibility',
+      thinkingFormat: 'Thinking format',
+      supportsReasoningEffort: 'Supports reasoning_effort',
+      cacheRetention: 'Prompt cache retention',
+      transport: 'Transport',
+      timeoutMs: 'Request timeout (ms)',
+      websocketConnectTimeoutMs: 'WebSocket connect timeout (ms)',
+      streamIdleTimeoutMs: 'Stream idle timeout (ms)',
+      retryPolicy: 'Retry policy',
+      retryMode: 'Retry mode',
+      retryableCodes: 'Retryable codes',
+      maxRetries: 'Max retries',
+      backoff: 'Backoff',
+      initialDelayMs: 'Initial delay (ms)',
+      maxDelayMs: 'Max delay (ms)',
+      jitterRatio: 'Jitter ratio',
+      resetEndpointAdvanced: 'Reset endpoint advanced parameters',
+      inheritDefault: 'Default',
       headers: 'Custom headers',
       headersDescription: 'These headers are sent when calling models, but not when fetching the model list. Store API keys and other secrets in credential settings.',
       inheritedHeaders: 'Inherited headers',
@@ -98,7 +133,7 @@ window.__ModuleLoader__.load({
       metadataDefault: 'Default provider: {provider} ({context}/{output})',
       metadataOfficial: 'Official provider: {provider} ({context}/{output})',
       metadataProvider: '{provider} ({context}/{output})',
-      reasoningInvalid: 'Reasoning efforts must inherit, be disabled, or be an effort list.',
+      reasoningInvalid: 'Reasoning efforts must be false or an effort list.',
       reasoningEmpty: 'A declared reasoning list needs at least one effort.',
       reasoningOffOnly: 'A list with only off has no usable reasoning effort.',
       reasoningUnknown: 'Unknown reasoning effort: {level}',
@@ -133,7 +168,7 @@ window.__ModuleLoader__.load({
       wireLabel: '{level} 服务端拼写',
       delete: '删除',
       addLevel: '添加级别',
-      clearReasoning: '清除推理覆盖',
+      clearReasoning: '清除推理等级',
       add: '添加',
       modelIndex: '模型 {index}',
       modelId: '模型 ID',
@@ -150,6 +185,35 @@ window.__ModuleLoader__.load({
       endpointNamePlaceholder: 'AcmeGateway',
       endpointUrl: '端点 URL',
       apiProtocol: 'API 协议',
+      endpointAdvanced: '端点高级参数',
+      endpointAdvancedDescription: '可选的默认值和传输设置；留空表示使用默认行为。',
+      defaultContextWindow: '默认上下文大小',
+      defaultMaxTokens: '默认最大输出长度',
+      defaultInput: '默认输入能力',
+      defaultReasoning: '默认推理强度',
+      thinkingBudgets: '推理预算',
+      budgetMinimal: 'Minimal 预算',
+      budgetLow: 'Low 预算',
+      budgetMedium: 'Medium 预算',
+      budgetHigh: 'High 预算',
+      compat: '推理兼容设置',
+      thinkingFormat: '推理格式',
+      supportsReasoningEffort: '支持 reasoning_effort',
+      cacheRetention: '提示缓存保留',
+      transport: '传输方式',
+      timeoutMs: '请求超时（毫秒）',
+      websocketConnectTimeoutMs: 'WebSocket 连接超时（毫秒）',
+      streamIdleTimeoutMs: '流空闲超时（毫秒）',
+      retryPolicy: '重试策略',
+      retryMode: '重试模式',
+      retryableCodes: '可重试错误码',
+      maxRetries: '最大重试次数',
+      backoff: '退避设置',
+      initialDelayMs: '初始延迟（毫秒）',
+      maxDelayMs: '最大延迟（毫秒）',
+      jitterRatio: '抖动比例',
+      resetEndpointAdvanced: '重置端点高级参数',
+      inheritDefault: '默认值',
       headers: '自定义 Header',
       headersDescription: '这些 Header 会在调用模型时发送，但获取模型列表时不会发送。API Key 等敏感信息请保存在密钥设置中。',
       inheritedHeaders: '继承的 Header',
@@ -198,7 +262,7 @@ window.__ModuleLoader__.load({
       metadataDefault: '默认 provider：{provider}（{context}/{output}）',
       metadataOfficial: '官方 provider：{provider}（{context}/{output}）',
       metadataProvider: '{provider}（{context}/{output}）',
-      reasoningInvalid: '推理强度必须是“继承”、禁用或级别列表。',
+      reasoningInvalid: '推理强度必须是 false 或级别列表。',
       reasoningEmpty: '已声明推理强度时至少选择一个级别。',
       reasoningOffOnly: '仅声明关闭级别没有可用的推理强度。',
       reasoningUnknown: '未知推理级别：{level}',
@@ -641,6 +705,220 @@ window.__ModuleLoader__.load({
       )
     }
 
+    function nonNegativeNumber(value) {
+      const number = Number(value)
+      return Number.isInteger(number) && number >= 0 ? number : undefined
+    }
+
+    function ratioNumber(value) {
+      const number = Number(value)
+      return Number.isFinite(number) && number >= 0 && number <= 1 ? number : undefined
+    }
+
+    function EndpointAdvancedEditor({
+      value, onChange, disabled, headers, inheritedHeaders, headersError, onHeadersChange, t,
+    }) {
+      const patch = (field, next) => {
+        const result = { ...value }
+        if (next === undefined) delete result[field]
+        else result[field] = next
+        onChange(result)
+      }
+      const input = Array.isArray(value.defaultInput) ? value.defaultInput : []
+      const toggleInput = modality => {
+        const next = new Set(input)
+        if (next.has(modality)) next.delete(modality)
+        else next.add(modality)
+        patch('defaultInput', next.size === 0 ? undefined : [...next])
+      }
+      const budgets = value.thinkingBudgets !== null && typeof value.thinkingBudgets === 'object' ? value.thinkingBudgets : {}
+      const patchBudget = (level, raw) => {
+        const next = { ...budgets }
+        const value = raw === '' ? undefined : nonNegativeNumber(raw)
+        if (value === undefined) delete next[level]
+        else next[level] = value
+        patch('thinkingBudgets', Object.keys(next).length === 0 ? undefined : next)
+      }
+      const compat = value.compat !== null && typeof value.compat === 'object' ? value.compat : {}
+      const patchCompat = (field, nextValue) => {
+        const next = { ...compat }
+        if (nextValue === undefined) delete next[field]
+        else next[field] = nextValue
+        patch('compat', Object.keys(next).length === 0 ? undefined : next)
+      }
+      const retry = value.retryPolicy !== null && typeof value.retryPolicy === 'object' ? value.retryPolicy : {}
+      const retryMode = retry.mode ?? ''
+      const patchRetry = (field, nextValue) => {
+        const next = { ...retry }
+        if (nextValue === undefined) delete next[field]
+        else next[field] = nextValue
+        patch('retryPolicy', Object.keys(next).length === 0 ? undefined : next)
+      }
+      const patchBackoff = (field, raw, parser) => {
+        const backoff = retry.backoff !== null && typeof retry.backoff === 'object' ? retry.backoff : {}
+        const next = { ...backoff }
+        const nextValue = raw === '' ? undefined : parser(raw)
+        if (nextValue === undefined) delete next[field]
+        else next[field] = nextValue
+        patchRetry('backoff', Object.keys(next).length === 0 ? undefined : next)
+      }
+      const retryableCodes = Array.isArray(retry.retryableCodes) ? retry.retryableCodes.join(', ') : ''
+      return h('details', { style: cardStyle },
+        h('summary', { style: { cursor: 'pointer', fontSize: '14px' } }, t('endpointAdvanced')),
+        h('p', { style: { margin: 0, color: 'var(--dsw-alias-label-tertiary)', fontSize: '12px' } }, t('endpointAdvancedDescription')),
+        h(HeaderEditor, {
+          value: headers,
+          onChange: onHeadersChange,
+          disabled,
+          error: headersError,
+          t,
+        }),
+        inheritedHeaders.length === 0 ? null : h(HeaderEditor, {
+          value: inheritedHeaders,
+          onChange: () => {},
+          disabled: true,
+          error: undefined,
+          t,
+          title: 'inheritedHeaders',
+          description: 'inheritedHeadersDescription',
+          addable: false,
+          removable: false,
+        }),
+        h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' } },
+          h(Field, { label: t('defaultContextWindow') }, h('input', {
+            style: inputStyle, type: 'number', min: '1', inputMode: 'numeric', disabled,
+            placeholder: '262144', value: value.defaultContextWindow ?? '',
+            onChange: event => patch('defaultContextWindow', event.target.value === '' ? undefined : positiveNumber(event.target.value)),
+          })),
+          h(Field, { label: t('defaultMaxTokens') }, h('input', {
+            style: inputStyle, type: 'number', min: '1', inputMode: 'numeric', disabled,
+            placeholder: '32768', value: value.defaultMaxTokens ?? '',
+            onChange: event => patch('defaultMaxTokens', event.target.value === '' ? undefined : positiveNumber(event.target.value)),
+          })),
+          h(Field, { label: t('defaultReasoning') }, h('select', {
+            style: inputStyle, value: value.reasoning ?? '', disabled,
+            onChange: event => patch('reasoning', event.target.value === '' ? undefined : event.target.value),
+          },
+          h('option', { value: '' }, t('inheritDefault')),
+          EFFORTS.map(level => h('option', { key: level, value: level }, level)),
+          )),
+          h(Field, { label: t('cacheRetention') }, h('select', {
+            style: inputStyle, value: value.cacheRetention ?? '', disabled,
+            onChange: event => patch('cacheRetention', event.target.value === '' ? undefined : event.target.value),
+          },
+          h('option', { value: '' }, t('inheritDefault')),
+          ['none', 'short', 'long'].map(mode => h('option', { key: mode, value: mode }, mode)),
+          )),
+          h(Field, { label: t('transport') }, h('select', {
+            style: inputStyle, value: value.transport ?? '', disabled,
+            onChange: event => patch('transport', event.target.value === '' ? undefined : event.target.value),
+          },
+          h('option', { value: '' }, t('inheritDefault')),
+          ['sse', 'websocket', 'websocket-cached', 'auto'].map(mode => h('option', { key: mode, value: mode }, mode)),
+          )),
+          h(Field, { label: t('timeoutMs') }, h('input', {
+            style: inputStyle, type: 'number', min: '0', inputMode: 'numeric', disabled,
+            value: value.timeoutMs ?? '', onChange: event => patch('timeoutMs', event.target.value === '' ? undefined : nonNegativeNumber(event.target.value)),
+          })),
+          h(Field, { label: t('websocketConnectTimeoutMs') }, h('input', {
+            style: inputStyle, type: 'number', min: '0', inputMode: 'numeric', disabled,
+            value: value.websocketConnectTimeoutMs ?? '', onChange: event => patch('websocketConnectTimeoutMs', event.target.value === '' ? undefined : nonNegativeNumber(event.target.value)),
+          })),
+          h(Field, { label: t('streamIdleTimeoutMs') }, h('input', {
+            style: inputStyle, type: 'number', min: '1', inputMode: 'numeric', disabled,
+            placeholder: '300000', value: value.streamIdleTimeoutMs ?? '',
+            onChange: event => patch('streamIdleTimeoutMs', event.target.value === '' ? undefined : positiveNumber(event.target.value)),
+          })),
+        ),
+        h('div', { style: { display: 'flex', flexDirection: 'column', gap: '5px', paddingTop: '8px' } },
+          h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } }, t('defaultInput')),
+          h('div', { style: { display: 'flex', gap: '14px' } }, ['text', 'image'].map(modality => h('label', { key: modality, style: { display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px' } },
+            h('input', { type: 'checkbox', checked: input.includes(modality), disabled, onChange: () => toggleInput(modality) }),
+            modality === 'text' ? t('inputText') : t('inputImage'),
+          ))),
+        ),
+        h('div', { style: { display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '8px' } },
+          h('strong', { style: { fontSize: '13px' } }, t('thinkingBudgets')),
+          ['minimal', 'low', 'medium', 'high'].map(level => h(Field, {
+            key: level,
+            label: t(`budget${level.charAt(0).toUpperCase()}${level.slice(1)}`),
+          }, h('input', {
+            style: inputStyle, type: 'number', min: '0', inputMode: 'numeric', disabled,
+            value: budgets[level] ?? '', onChange: event => patchBudget(level, event.target.value),
+          }))),
+        ),
+        h('div', { style: { display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '8px' } },
+          h('strong', { style: { fontSize: '13px' } }, t('compat')),
+          h(Field, { label: t('thinkingFormat') }, h('select', {
+            style: inputStyle, value: compat.thinkingFormat ?? '', disabled,
+            onChange: event => patchCompat('thinkingFormat', event.target.value === '' ? undefined : event.target.value),
+          },
+          h('option', { value: '' }, t('inheritDefault')),
+          THINKING_FORMATS.map(format => h('option', { key: format, value: format }, format)),
+          )),
+          h(Field, { label: t('supportsReasoningEffort') }, h('select', {
+            style: inputStyle, value: compat.supportsReasoningEffort === undefined ? '' : String(compat.supportsReasoningEffort), disabled,
+            onChange: event => patchCompat('supportsReasoningEffort', event.target.value === '' ? undefined : event.target.value === 'true'),
+          },
+          h('option', { value: '' }, t('inheritDefault')),
+          h('option', { value: 'true' }, 'true'),
+          h('option', { value: 'false' }, 'false'),
+          )),
+        ),
+        h('div', { style: { display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '8px' } },
+          h('strong', { style: { fontSize: '13px' } }, t('retryPolicy')),
+          h(Field, { label: t('retryMode') }, h('select', {
+            style: inputStyle, value: retryMode, disabled,
+            onChange: event => {
+              const mode = event.target.value
+              if (mode === '') patch('retryPolicy', undefined)
+              else patch('retryPolicy', {
+                mode,
+                ...retry.backoff === undefined ? {} : { backoff: retry.backoff },
+              })
+            },
+          },
+          h('option', { value: '' }, t('inheritDefault')),
+          h('option', { value: 'normal' }, 'normal'),
+          h('option', { value: 'always' }, 'always'),
+          )),
+          retryMode === 'normal' ? h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' } },
+            h(Field, { label: t('maxRetries') }, h('input', {
+              style: inputStyle, type: 'number', min: '0', inputMode: 'numeric', disabled,
+              value: retry.maxRetries ?? '', onChange: event => patchRetry('maxRetries', event.target.value === '' ? undefined : nonNegativeNumber(event.target.value)),
+            })),
+            h(Field, { label: t('retryableCodes') }, h('input', {
+              style: inputStyle, disabled, value: retryableCodes,
+              onChange: event => {
+                const codes = event.target.value.split(',').map(code => code.trim()).filter(Boolean)
+                patchRetry('retryableCodes', codes.length === 0 ? undefined : codes)
+              },
+            })),
+          ) : null,
+          retryMode === 'normal' || retryMode === 'always' ? h('div', { style: { display: 'flex', flexDirection: 'column', gap: '8px' } },
+            h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } }, t('backoff')),
+            h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' } },
+              h(Field, { label: t('initialDelayMs') }, h('input', {
+                style: inputStyle, type: 'number', min: '1', inputMode: 'numeric', disabled,
+                value: retry.backoff?.initialDelayMs ?? '', onChange: event => patchBackoff('initialDelayMs', event.target.value, positiveNumber),
+              })),
+              h(Field, { label: t('maxDelayMs') }, h('input', {
+                style: inputStyle, type: 'number', min: '1', inputMode: 'numeric', disabled,
+                value: retry.backoff?.maxDelayMs ?? '', onChange: event => patchBackoff('maxDelayMs', event.target.value, positiveNumber),
+              })),
+              h(Field, { label: t('jitterRatio') }, h('input', {
+                style: inputStyle, type: 'number', min: '0', max: '1', step: '0.01', inputMode: 'decimal', disabled,
+                value: retry.backoff?.jitterRatio ?? '', onChange: event => patchBackoff('jitterRatio', event.target.value, ratioNumber),
+              })),
+            ),
+          ) : null,
+        ),
+        h('div', { style: { display: 'flex', justifyContent: 'flex-end', paddingTop: '8px' } },
+          h('button', { type: 'button', style: buttonStyle, disabled, onClick: () => onChange({}) }, t('resetEndpointAdvanced')),
+        ),
+      )
+    }
+
     function ModelRow({
       model, index, onChange, disabled, lockId = false,
       metadataChoice, metadataCandidates = [], metadataDefaultProvider, metadataOfficialProvider, onMetadataChoice, t,
@@ -730,6 +1008,7 @@ window.__ModuleLoader__.load({
       const initialModels = Array.isArray(initial.models) ? initial.models.map(copyModel) : []
       const inheritedHeaders = Array.isArray(initial.inheritedHeaders) ? initial.inheritedHeaders : []
       const initialHeaders = Array.isArray(initial.headers) ? initial.headers : []
+      const initialAdvanced = initial.advanced !== null && typeof initial.advanced === 'object' ? initial.advanced : {}
       const [endpoint, setEndpoint] = useState({
         name: initial.name ?? '',
         baseURL: initial.baseURL ?? '',
@@ -748,6 +1027,7 @@ window.__ModuleLoader__.load({
       const [failure, setFailure] = useState(undefined)
       const [metadataNotice, setMetadataNotice] = useState(undefined)
       const [settingsSaved, setSettingsSaved] = useState(false)
+      const [advanced, setAdvanced] = useState({ ...initialAdvanced })
       const route = editing ? provider : endpoint.name.toLowerCase()
       const keyRef = editing
         ? (initial.apiKeyEnv ?? `${route.toUpperCase()}_API_KEY`)
@@ -773,13 +1053,21 @@ window.__ModuleLoader__.load({
       const endpointChanged = !editing || endpoint.name !== (initial.name ?? '')
         || endpoint.baseURL.trim() !== (initial.baseURL ?? '')
         || endpoint.api !== (initial.api ?? '') || modelsChanged || headersChanged
+        || !jsonEqual(advanced, initialAdvanced)
       const keyChanged = endpoint.apiKey.trim() !== ''
+      const advancedProfile = Object.fromEntries(Object.entries(advanced).filter(([, value]) => {
+        if (value === undefined) return false
+        if (Array.isArray(value)) return value.length > 0
+        if (value !== null && typeof value === 'object') return Object.keys(value).length > 0
+        return true
+      }))
       const profile = {
         displayName: endpoint.name,
         apiKeyEnv: keyRef,
         api: endpoint.api,
         baseURL: endpoint.baseURL.trim(),
         models: selectedModels.map(copyModel),
+        ...advancedProfile,
         ...Object.keys(effectiveHeaders).length === 0 ? {} : { headers: effectiveHeaders },
       }
       const preview = {
@@ -918,7 +1206,13 @@ window.__ModuleLoader__.load({
         if (headersChanged) {
           ops.push(Object.keys(effectiveHeaders).length === 0
             ? { op: 'unset', path: ['providers', route, 'headers'] }
-            : { op: 'set', path: ['providers', route, 'headers'], value: effectiveHeaders })
+              : { op: 'set', path: ['providers', route, 'headers'], value: effectiveHeaders })
+        }
+        for (const field of PROVIDER_ADVANCED_FIELDS) {
+          if (jsonEqual(advanced[field], initialAdvanced[field])) continue
+          ops.push(advanced[field] === undefined
+            ? { op: 'unset', path: ['providers', route, field] }
+            : { op: 'set', path: ['providers', route, field], value: advanced[field] })
         }
         if (initial.apiKeyEnv === undefined && keyChanged) {
           ops.push({ op: 'set', path: ['providers', route, 'apiKeyEnv'], value: keyRef })
@@ -1002,30 +1296,22 @@ window.__ModuleLoader__.load({
         h('option', { value: 'openai-responses' }, 'openai-responses'),
         h('option', { value: 'anthropic-messages' }, 'anthropic-messages'),
         )),
-        h(HeaderEditor, {
-          value: endpoint.headers,
-          onChange: headers => update('headers', headers),
-          disabled: busy || settingsSaved,
-          error: requestHeadersError,
-          t,
-        }),
-        inheritedHeaders.length === 0 ? null : h(HeaderEditor, {
-          value: inheritedHeaders,
-          onChange: () => {},
-          disabled: true,
-          error: undefined,
-          t,
-          title: 'inheritedHeaders',
-          description: 'inheritedHeadersDescription',
-          addable: false,
-          removable: false,
-        }),
         h(Field, { label: t('endpointKey') }, h('input', {
           style: inputStyle, type: 'password', autoComplete: 'off', value: endpoint.apiKey, disabled: busy,
           placeholder: t(editing ? 'endpointKeyExistingPlaceholder' : 'endpointKeyPlaceholder'),
           onChange: event => update('apiKey', event.target.value),
         })),
         keyError !== undefined ? h('p', { style: { margin: 0, color: 'var(--dsw-alias-state-error-primary)', fontSize: '12px' } }, keyError) : null,
+        h(EndpointAdvancedEditor, {
+          value: advanced,
+          onChange: setAdvanced,
+          disabled: busy || settingsSaved,
+          headers: endpoint.headers,
+          inheritedHeaders,
+          headersError: requestHeadersError,
+          onHeadersChange: headers => update('headers', headers),
+          t,
+        }),
         h('div', { style: { display: 'flex', justifyContent: 'flex-end', gap: '8px' } },
           h('button', {
             type: 'button', style: buttonStyle, disabled: busy || !readyToFetch || settingsSaved,
@@ -1071,7 +1357,7 @@ window.__ModuleLoader__.load({
             }),
           ),
         ),
-        selectedModels.length === 0 ? null : h('div', { style: { display: 'flex', flexDirection: 'column', gap: '6px' } },
+        candidates === undefined ? null : h('div', { style: { display: 'flex', flexDirection: 'column', gap: '6px' } },
           h('strong', { style: { fontSize: '13px' } }, t('configPreview')),
           h('pre', { style: { boxSizing: 'border-box', height: '280px', margin: 0, padding: '10px', overflow: 'auto', borderRadius: '8px', background: 'var(--dsw-alias-bg-module-platform)', border: '1px solid var(--dsw-alias-border-l2)', fontSize: '12px', lineHeight: '18px' } }, JSON.stringify(preview, null, 2)),
           h('p', { style: { margin: 0, color: 'var(--dsw-alias-label-tertiary)', fontSize: '12px' } }, t('keyPreviewNotice')),
@@ -1134,6 +1420,7 @@ window.__ModuleLoader__.load({
       const canRestoreInheritance = activeProvider !== undefined
         && userProfile !== null && typeof userProfile === 'object' && Array.isArray(userProfile.models)
         && baseProfile !== null && typeof baseProfile === 'object'
+      const userAdvanced = userProfile !== null && typeof userProfile === 'object' ? userProfile : {}
       const initial = activeProvider === undefined || profile === null || typeof profile !== 'object' ? undefined : {
         name: typeof profile.displayName === 'string' ? profile.displayName : activeProvider,
         baseURL: typeof profile.baseURL === 'string' ? profile.baseURL : '',
@@ -1142,6 +1429,29 @@ window.__ModuleLoader__.load({
         models: Array.isArray(profile.models) ? profile.models : [],
         headers: userProfile !== null && typeof userProfile === 'object' ? headerRows(userProfile.headers) : [],
         inheritedHeaders: baseProfile !== null && typeof baseProfile === 'object' ? headerRows(baseProfile.headers) : [],
+        advanced: {
+          defaultContextWindow: userAdvanced.defaultContextWindow,
+          defaultMaxTokens: userAdvanced.defaultMaxTokens,
+          defaultInput: Array.isArray(userAdvanced.defaultInput) ? [...userAdvanced.defaultInput] : undefined,
+          reasoning: userAdvanced.reasoning,
+          thinkingBudgets: userAdvanced.thinkingBudgets !== null && typeof userAdvanced.thinkingBudgets === 'object'
+            ? { ...userAdvanced.thinkingBudgets }
+            : undefined,
+          compat: userAdvanced.compat !== null && typeof userAdvanced.compat === 'object' ? { ...userAdvanced.compat } : undefined,
+          cacheRetention: userAdvanced.cacheRetention,
+          transport: userAdvanced.transport,
+          timeoutMs: userAdvanced.timeoutMs,
+          websocketConnectTimeoutMs: userAdvanced.websocketConnectTimeoutMs,
+          streamIdleTimeoutMs: userAdvanced.streamIdleTimeoutMs,
+          retryPolicy: userAdvanced.retryPolicy !== null && typeof userAdvanced.retryPolicy === 'object'
+            ? {
+              ...userAdvanced.retryPolicy,
+              ...userAdvanced.retryPolicy.backoff !== null && typeof userAdvanced.retryPolicy.backoff === 'object'
+                ? { backoff: { ...userAdvanced.retryPolicy.backoff } }
+                : {},
+            }
+            : undefined,
+        },
       }
       const emptyInitial = { name: '', baseURL: '', api: 'openai-completions', models: [], headers: [], inheritedHeaders: [] }
       const selectProvider = next => {

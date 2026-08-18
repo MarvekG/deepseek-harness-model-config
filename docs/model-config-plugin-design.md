@@ -136,12 +136,13 @@ models:
 
 新增端点与编辑已保存端点共用一个 `EndpointEditor`。编辑器由端点字段、模型候选 picker、模型参数 draft、元数据来源选择和保存动作组成；模式只影响初始值、路由写入方式和凭据处理，不复制一套 UI 或匹配逻辑。
 
-- **新增模式**：Provider ID（英文字母开头，后续允许数字，作为 `providers.<route>` 键与派生凭据引用词干）、端点（baseURL）、协议（读自命名空间自身 schema 的 union，防漂移）、至少一个唯一 id 模型。初始没有模型候选；首次拉取后所有候选默认不勾选。保存一次 `settings.mutate` 写入整段 profile，再一次 `credentials.set` 写入 `<ROUTE>_API_KEY`；API Key 只存在于组件内存。
-- **编辑模式**：加载已保存 provider 的 displayName、baseURL、api、用户层 Header、有效模型列表和当前模型选择。端点字段、Header、模型和凭据在同一编辑器中编辑；路由 key 保持不变，displayName 改动只更新显示名。API Key 留空表示继续使用已有凭据，填写新值才更新凭据。
+- **新增模式**：Provider ID（英文字母开头，后续允许数字，作为 `providers.<route>` 键与派生凭据引用词干）、端点（baseURL）、协议（读自命名空间自身 schema 的 union，防漂移）、至少一个唯一 id 模型。初始没有模型候选；首次拉取后所有候选默认不勾选。高级参数初始为空，空值、空数组和空对象不会写入最终 profile。保存一次 `settings.mutate` 写入整段 profile，再一次 `credentials.set` 写入 `<ROUTE>_API_KEY`；API Key 只存在于组件内存。
+- **编辑模式**：加载已保存 provider 的 displayName、baseURL、api、用户层 Header、用户层显式高级参数、有效模型列表和当前模型选择。schema 或 base 层的默认值不回填为用户层参数；端点字段、Header、模型和凭据在同一编辑器中编辑；路由 key 保持不变，displayName 改动只更新显示名。API Key 留空表示继续使用已有凭据，填写新值才更新凭据。
 - **重新拉取**：编辑模式和新增模式都通过 `llm.discoverModels` 获取候选，不直接写入 settings。编辑模式传递现有 provider route，使 adapter 能使用已保存凭据；用户输入的新 Key 优先用于本次拉取。重新拉取后，当前已勾选的模型保持勾选，新候选默认不勾选；当前勾选但端点未返回的模型保留在列表中，避免刷新误删。
 - **恢复继承**：已存在用户层 `models` 覆盖且存在 base 模型列表时，编辑器保留“恢复继承”动作，显式执行 `unset providers.<route>.models`，恢复 base 层模型列表。
+- **端点高级参数**：编辑器暴露自定义/继承 Header、`defaultContextWindow`、`defaultMaxTokens`、`defaultInput`、默认 `reasoning`、`thinkingBudgets`、`compat`、`cacheRetention`、`transport`、`timeoutMs`、`websocketConnectTimeoutMs`、`streamIdleTimeoutMs` 和 `retryPolicy`；字段默认为空，空值不写入最终 profile，已存在的用户层值重置后使用 `unset`。
 - **保存**：新增模式写入整段 profile；编辑模式只写入发生变化的 displayName、api、baseURL、models、headers 和必要的 apiKeyEnv 字段，并携带 `expectedRevision`。只有保存成功后才调用 `onSaved` 刷新设置快照。
-- **布局**：顶部选择已保存端点或进入“新增端点”；两种模式下端点字段、重新拉取、模型选择、参数编辑、配置预览和保存按钮位置一致。
+- **布局**：顶部选择已保存端点或进入“新增端点”；两种模式下端点字段、重新拉取、模型选择、参数编辑、配置预览和保存按钮位置一致。模型列表加载后，即使没有勾选模型或端点高级参数折叠，配置预览仍实时显示端点高级参数。
 
 ### 5.3 拉取模型
 
@@ -160,7 +161,7 @@ models:
 | 推理强度 | models.dev 回填的级别行列表；未声明时可通过“添加级别”控件创建；级别名 + wire 拼写输入 | 同上 |
 
 - **落盘形态与既有编辑器一致**：持 draft 数组，一次 `settings.mutate` 写整组 `models`（或重置时 unset 该数组）——逐索引 path op 在数组位移时脆弱，不使用。
-- 推理强度由模型元数据记录或用户声明决定：元数据明确非推理时写 `false`，元数据提供 effort 时写声明 dict，元数据没有推理信息时保持省略。省略或 `false` 时仍渲染“添加级别”控件，用户选择一个级别后才创建声明 dict；声明 dict 时渲染**已声明**级别、同一“添加级别”入口和清除覆盖按钮。级别候选读自命名空间 schema 的 dict 键约束（见 4.3），排除已声明者；省略某级别即"不支持"，不做隐式默认。
+- 推理强度由模型元数据记录或用户声明决定：元数据明确非推理时写 `false`，元数据提供 effort 时写声明 dict，元数据没有推理信息时保持省略。省略或 `false` 时仍渲染“添加级别”控件，用户选择一个级别后才创建声明 dict；声明 dict 时渲染**已声明**级别、同一“添加级别”入口和“清除推理等级”按钮。级别候选读自命名空间 schema 的 dict 键约束（见 4.3），排除已声明者；省略某级别即"不支持"，不做隐式默认。
 - `off` 三态 UI：不声明（无行）/ 空值行（`off:`，按方言映射）/ 带值行。清空非 `off` 级别的拼写 = 删除该级别行（unset），不写空串——空串与空 dict 都是被拒绝的非法值。
 - 校验在 draft 上先行（重复 id、非法级别、`off` 之外空值、非正整数容量），写入前再经 schema；行内报错。
 - 继承视图：`base` 层的 models 数组在用户层未覆盖时以继承态显示；首次编辑把完整数组物化进用户层；重置 = unset 该数组。
@@ -211,9 +212,9 @@ models:
 
 - **单元**：schema 校验（重复 id、`reasoningEfforts` 非法形态、off 三态）、解析拒绝、draft → path op 生成、容量 `K/M` 解析与最短回写、凭据派生与 ownership 判定。
 - **模型元数据匹配**：官方模型名命中 provider、带 provider 前缀的别名归一化、官方记录缺失时整条记录的最小排序、切换 provider 不跨记录拼字段、未知 ID 保持手工编辑。
-- **端点编辑器**：新增与编辑共用字段和模型 picker、编辑模式重新拉取使用已保存凭据、新模型默认不勾选、已勾选模型在刷新后保留、编辑保存使用路径 ops 且不覆盖无关 profile 字段。
+- **端点编辑器**：新增与编辑共用字段和模型 picker、编辑模式重新拉取使用已保存凭据、新模型默认不勾选、已勾选模型在刷新后保留、端点高级参数编辑、编辑保存使用路径 ops 且不覆盖无关 profile 字段。
 - **REAL-composition**：boot 测试专用 cordis.yml 经 Loader 与 app/process 装载，断言"写 profile → 路由注册 → `llm.providers` 列表生效 → 下一次请求使用新配置"。
-- **组件（jsdom）**：ProviderCard 门控、拉取携带表单当前值、picker 采纳不覆盖调优行、模型元数据推理回填、手动添加或清除每模型 effort、冲突重试、只读姿态。
+- **组件（jsdom）**：ProviderCard 门控、拉取携带表单当前值、picker 采纳不覆盖调优行、模型元数据推理回填、手动添加或重置每模型 effort、冲突重试、只读姿态。
 - **e2e 快照（keyless）**：仿照 `apps/web/tests/models-settings.e2e.ts` 钉死"新增自定义端点 → 拉取 → 配置每模型参数 → 设置页渲染"全链路，scaffold `harnessHome`。
 - **覆盖门**：client 包进每文件 100% 覆盖门；`test:gui` + `DSH_SNAPSHOT=replay test:web`。
 
