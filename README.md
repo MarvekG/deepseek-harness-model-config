@@ -19,16 +19,22 @@
 
 完整参数说明：[`llm-pi-ai` 参数参考](docs/llm-pi-ai-parameters.md)。
 
-打开设置：
-<img width="1613" height="1011" alt="image" src="https://github.com/user-attachments/assets/132b604b-b5ed-4986-87eb-c307d27cd8ba" />
+**打开设置**
+<img width="1666" height="810" alt="image" src="https://github.com/user-attachments/assets/945e6566-dca2-45ca-bcc3-4609ea47f079" />
 
-新增端点：
-<img width="1180" height="892" alt="image" src="https://github.com/user-attachments/assets/209bd3d6-ae39-489e-ae15-eb215c6c1126" />
+**新增端点**
+端点名称、BASE_URL、API-KEY，然后点击获取模型，把想要的模型勾选上：
+<img width="1746" height="1580" alt="image" src="https://github.com/user-attachments/assets/828f36ea-8a7d-4021-9dbb-253d60a1e949" />
 
-获取模型，并自动获取推理强度、上下文大小、输出强度等参数：
-<img width="1610" height="1439" alt="image" src="https://github.com/user-attachments/assets/4511b643-2d09-4a86-bb7f-5c4f7b6620a7" />
+**参数补充**
+1. 端点高级参数：一般保持默认即可。
 
-自定义 Header 仅用于模型请求；“获取可用模型”仍使用 API Key。
+<img width="1712" height="1613" alt="image" src="https://github.com/user-attachments/assets/e185563c-4b89-468f-8463-49463c5b6e41" />
+
+3. 模型参数：主要检查上下文大小和最大输出长度。
+<img width="1744" height="1628" alt="image" src="https://github.com/user-attachments/assets/a9a1e123-1e78-4435-addc-02ded574ba83" />
+
+模型参数一般能自动填写，前提时要能访问 [https://models.dev](https://models.dev)
 
 ## 安装
 
