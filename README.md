@@ -17,6 +17,8 @@
 - 所有界面文案支持中文和英文，跟随 Harness 语言设置。
 - API Key 仅经 Harness 凭据存储写入，不会进入 `settings.yaml` 或配置预览。
 
+完整参数说明：[`llm-pi-ai` 参数参考](docs/llm-pi-ai-parameters.md)。
+
 打开设置：
 <img width="1613" height="1011" alt="image" src="https://github.com/user-attachments/assets/132b604b-b5ed-4986-87eb-c307d27cd8ba" />
 

@@ -17,6 +17,8 @@ Adds an Advanced Model Configuration page to the [DeepSeek Harness](https://gith
 - Chinese and English UI copy follows the Harness language setting.
 - API keys are written only through Harness credential storage, never to `settings.yaml` or the configuration preview.
 
+See the [llm-pi-ai parameter reference](docs/llm-pi-ai-parameters.md) for the complete configuration table.
+
 Custom headers apply only to model requests. **Fetch available models** still uses the API key.
 
 ## Install

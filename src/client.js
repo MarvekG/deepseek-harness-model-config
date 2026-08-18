@@ -7,6 +7,7 @@ window.__ModuleLoader__.load({
     const NS = 'settings.modelConfig'
     const EFFORTS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']
     const THINKING_FORMATS = ['openai', 'deepseek', 'openrouter', 'together', 'zai', 'qwen', 'string-thinking', 'ant-ling']
+    const PARAMETERS_DOC_URL = 'https://github.com/MarvekG/deepseek-harness-model-config/blob/main/docs/llm-pi-ai-parameters.md'
     const PROVIDER_ADVANCED_FIELDS = [
       'defaultContextWindow', 'defaultMaxTokens', 'defaultInput', 'reasoning', 'thinkingBudgets',
       'compat', 'cacheRetention', 'transport', 'timeoutMs', 'websocketConnectTimeoutMs',
@@ -20,6 +21,7 @@ window.__ModuleLoader__.load({
       loading: 'Loading model configuration…',
       adapterMissing: 'llm-pi-ai is not loaded. Add a custom provider from the Models page first.',
       intro: 'Declare capacities and reasoning support for custom models. Endpoints, keys, and model discovery remain on the Models page.',
+      parameterReference: 'Parameter reference',
       noProviders: 'No custom provider yet. Add a provider and at least one model from the Models page.',
       provider: 'Provider',
       inheritedModels: 'Editing the user-layer model list',
@@ -33,6 +35,9 @@ window.__ModuleLoader__.load({
       saved: 'Saved. New parameters apply to the next request.',
       restored: 'Restored the inherited model list.',
       addEndpoint: 'Add endpoint',
+      deleteEndpoint: 'Delete endpoint',
+      deleteEndpointConfirm: 'Delete endpoint "{provider}" and its generated credential?',
+      deleteEndpointFailed: 'Could not delete the endpoint: {message}',
       reasoning: 'Reasoning effort',
       offPlaceholder: 'Blank disables per protocol',
       wirePlaceholder: 'Wire spelling',
@@ -150,6 +155,7 @@ window.__ModuleLoader__.load({
       loading: '正在加载模型配置…',
       adapterMissing: '未装载 llm-pi-ai。请先在“模型”页添加一个自定义提供方。',
       intro: '在此声明自定义模型的容量与推理能力。端点、密钥和获取可用模型仍在“模型”页管理。',
+      parameterReference: '参数文档',
       noProviders: '尚无自定义提供方。请先在“模型”页添加一个提供方和至少一个模型。',
       provider: '提供方',
       inheritedModels: '正在编辑用户层模型列表',
@@ -163,6 +169,9 @@ window.__ModuleLoader__.load({
       saved: '已保存；下一次请求将使用新参数。',
       restored: '已恢复继承的模型列表。',
       addEndpoint: '新增端点',
+      deleteEndpoint: '删除端点',
+      deleteEndpointConfirm: '确定删除端点“{provider}”及其派生凭据吗？',
+      deleteEndpointFailed: '删除端点失败：{message}',
       reasoning: '推理强度',
       offPlaceholder: '留空表示按协议关闭',
       wirePlaceholder: '服务端拼写',
@@ -292,6 +301,12 @@ window.__ModuleLoader__.load({
       boxSizing: 'border-box', minHeight: '30px', padding: '4px 10px',
       border: '1px solid var(--dsw-alias-border-l2)', borderRadius: '15px',
       background: 'transparent', color: 'inherit', cursor: 'pointer', font: 'inherit',
+    }
+    const dangerButtonStyle = {
+      ...buttonStyle,
+      background: 'var(--dsw-alias-state-error-primary)',
+      color: 'var(--dsw-alias-label-primary-foreground)',
+      borderColor: 'transparent',
     }
 
     function loadModelsDevMetadata() {
@@ -1424,6 +1439,7 @@ window.__ModuleLoader__.load({
       const [state, setState] = useState({ status: 'loading' })
       const [provider, setProvider] = useState('')
       const [showCreate, setShowCreate] = useState(false)
+      const [deleteError, setDeleteError] = useState(undefined)
 
       useEffect(() => {
         let alive = true
@@ -1499,16 +1515,57 @@ window.__ModuleLoader__.load({
       const selectProvider = next => {
         setProvider(next)
         setShowCreate(false)
+        setDeleteError(undefined)
       }
       const openCreate = () => {
         setShowCreate(true)
         setProvider('')
+        setDeleteError(undefined)
+      }
+      const deleteProvider = async () => {
+        if (activeProvider === undefined || profile === null || typeof profile !== 'object') return
+        if (!window.confirm(t('deleteEndpointConfirm', { provider: activeProvider }))) return
+        setDeleteError(undefined)
+        try {
+          const response = await api.settings.mutate({
+            ns: 'llm-pi-ai',
+            ops: [{ op: 'unset', path: ['providers', activeProvider] }],
+            expectedRevision: namespace.revision,
+          })
+          if (!response.result.ok) {
+            setDeleteError(t('deleteEndpointFailed', { message: response.result.error.message }))
+            return
+          }
+          const keyRef = typeof profile.apiKeyEnv === 'string' ? profile.apiKeyEnv : undefined
+          const generatedKeyRef = `${activeProvider.toUpperCase()}_API_KEY`
+          if (keyRef === generatedKeyRef) {
+            const credential = await api.credentials.unset({ ref: keyRef })
+            if (!credential.result.ok) {
+              setDeleteError(t('deleteEndpointFailed', { message: credential.result.error.message }))
+            }
+          }
+          setProvider('')
+          setShowCreate(false)
+          controller.refresh()
+        } catch (error) {
+          setDeleteError(t('deleteEndpointFailed', { message: messageOf(error) }))
+        }
       }
 
       return h('section', { style: sectionStyle },
         h('div', null,
           h('h2', { style: { margin: 0, fontSize: '16px', lineHeight: '24px' } }, t('title')),
           h('p', { style: { margin: '4px 0 0', color: 'var(--dsw-alias-label-tertiary)', fontSize: '14px', lineHeight: '22px' } }, t('intro')),
+          h('a', {
+            href: PARAMETERS_DOC_URL,
+            target: '_blank',
+            rel: 'noreferrer',
+            onClick: event => {
+              event.preventDefault()
+              window.open(PARAMETERS_DOC_URL, '_blank', 'noopener,noreferrer')
+            },
+            style: { display: 'inline-block', marginTop: '6px', color: 'var(--dsw-alias-text-link)', fontSize: '13px' },
+          }, t('parameterReference')),
         ),
         h('div', { style: { display: 'flex', alignItems: 'flex-end', gap: '8px' } },
           providers.length === 0 ? null : h(Field, { label: t('provider') }, h('select', {
@@ -1516,7 +1573,11 @@ window.__ModuleLoader__.load({
             onChange: event => selectProvider(event.target.value),
           }, providers.map(id => h('option', { key: id, value: id }, id)))),
           h('button', { type: 'button', style: buttonStyle, disabled: !state.writable || showCreate, onClick: openCreate }, t('addEndpoint')),
+          activeProvider === undefined || showCreate ? null : h('button', {
+            type: 'button', style: dangerButtonStyle, disabled: !state.writable, onClick: () => { void deleteProvider() },
+          }, t('deleteEndpoint')),
         ),
+        deleteError === undefined ? null : h('p', { style: { margin: 0, color: 'var(--dsw-alias-state-error-primary)', fontSize: '13px' } }, deleteError),
         showCreate ? h(EndpointEditor, {
           key: 'new-endpoint',
           api,
