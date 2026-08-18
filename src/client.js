@@ -6,8 +6,8 @@ window.__ModuleLoader__.load({
 
     const NS = 'settings.modelConfig'
     const EFFORTS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']
-    const MODELS_DEV_CATALOG_URL = 'https://models.dev/api.json'
-    let modelsDevCatalogPromise
+    const MODELS_DEV_METADATA_URL = 'https://models.dev/api.json'
+    let modelsDevMetadataPromise
     const en = {
       nav: 'Advanced model config',
       title: 'Advanced model config',
@@ -44,6 +44,7 @@ window.__ModuleLoader__.load({
       inputText: 'Text',
       inputImage: 'Image',
       endpointTitle: 'Add custom endpoint',
+      editEndpoint: 'Edit endpoint',
       endpointDescription: 'Fetch candidates through the OpenAI-compatible model-list endpoint.',
       endpointName: 'Name',
       endpointNamePlaceholder: 'AcmeGateway',
@@ -64,6 +65,7 @@ window.__ModuleLoader__.load({
       headerValueInvalid: 'The header content contains unsupported characters. Remove emoji, null characters, and line breaks.',
       endpointKey: 'API key',
       endpointKeyPlaceholder: 'Used only to fetch models and store the credential',
+      endpointKeyExistingPlaceholder: 'Leave blank to keep the existing credential',
       endpointNameRequired: 'Enter an endpoint name.',
       endpointNameInvalid: 'The name must start with an English letter and contain only English letters and numbers.',
       endpointUrlRequired: 'Enter an endpoint URL.',
@@ -74,7 +76,9 @@ window.__ModuleLoader__.load({
       routeTaken: 'Route {route} already exists.',
       routePreview: 'Uses route {route} and credential reference {ref}.',
       fetchModels: 'Fetch available models',
+      refreshModels: 'Refresh models',
       fetching: 'Fetching…',
+      refreshingModels: 'Refreshing…',
       discoveryEmpty: 'The endpoint returned no models to add.',
       chooseModels: 'Choose models to add',
       selectAll: 'Select all',
@@ -85,14 +89,15 @@ window.__ModuleLoader__.load({
       keyPreviewNotice: 'The API key is saved separately and is not shown here. Header content is saved in settings, but is not sent when fetching the model list.',
       cancel: 'Cancel',
       confirmSave: 'Confirm and save',
+      saveChanges: 'Save changes',
       retryKey: 'Retry saving API key',
-      catalogApplied: 'Completed metadata for {matched} models. Official providers: {official}; default providers: {ambiguous}; no catalog match: {unmatched}.',
-      catalogUnavailable: 'Could not load models.dev metadata. The endpoint results remain editable.',
-      catalogSource: 'Catalog source',
-      catalogSourceDescription: 'Each option is one provider record. Switching it replaces all catalog-derived fields for this model.',
-      catalogDefault: 'Default provider: {provider} ({context}/{output})',
-      catalogOfficial: 'Official provider: {provider} ({context}/{output})',
-      catalogProvider: '{provider} ({context}/{output})',
+      metadataApplied: 'Completed metadata for {matched} models. Official providers: {official}; default providers: {ambiguous}; no metadata match: {unmatched}.',
+      metadataUnavailable: 'Could not load models.dev metadata. The endpoint results remain editable.',
+      metadataSource: 'Metadata source',
+      metadataSourceDescription: 'Each option is one provider metadata record. Switching it replaces all metadata fields for this model.',
+      metadataDefault: 'Default provider: {provider} ({context}/{output})',
+      metadataOfficial: 'Official provider: {provider} ({context}/{output})',
+      metadataProvider: '{provider} ({context}/{output})',
       reasoningInvalid: 'Reasoning efforts must inherit, be disabled, or be an effort list.',
       reasoningEmpty: 'A declared reasoning list needs at least one effort.',
       reasoningOffOnly: 'A list with only off has no usable reasoning effort.',
@@ -139,6 +144,7 @@ window.__ModuleLoader__.load({
       inputText: '文本',
       inputImage: '图片',
       endpointTitle: '新增自定义端点',
+      editEndpoint: '编辑端点',
       endpointDescription: '使用 OpenAI 兼容的模型列表接口获取候选模型。',
       endpointName: '名称',
       endpointNamePlaceholder: 'AcmeGateway',
@@ -159,6 +165,7 @@ window.__ModuleLoader__.load({
       headerValueInvalid: 'Header 内容包含不支持的字符，请移除表情、空字符和换行符。',
       endpointKey: 'API Key',
       endpointKeyPlaceholder: '仅用于获取模型和保存凭据',
+      endpointKeyExistingPlaceholder: '留空表示继续使用已有凭据',
       endpointNameRequired: '请填写端点名称。',
       endpointNameInvalid: '名称必须以英文字母开头，只能包含英文字母和数字。',
       endpointUrlRequired: '请填写端点 URL。',
@@ -169,7 +176,9 @@ window.__ModuleLoader__.load({
       routeTaken: '路由 {route} 已存在。',
       routePreview: '将使用路由 {route} 和凭据引用 {ref}。',
       fetchModels: '获取可用模型',
+      refreshModels: '重新拉取模型',
       fetching: '获取中…',
+      refreshingModels: '重新拉取中…',
       discoveryEmpty: '端点没有返回可添加的模型。',
       chooseModels: '选择要添加的模型',
       selectAll: '全选',
@@ -180,14 +189,15 @@ window.__ModuleLoader__.load({
       keyPreviewNotice: 'API Key 会单独保存，不会显示在这里。Header 内容会写入配置，但获取模型列表时不会发送。',
       cancel: '取消',
       confirmSave: '确认并保存',
+      saveChanges: '保存修改',
       retryKey: '重试保存 API Key',
-      catalogApplied: '已为 {matched} 个模型补全参数；官方 provider {official} 个，默认 provider {ambiguous} 个，没有目录记录 {unmatched} 个。',
-      catalogUnavailable: '无法加载 models.dev 元数据；端点返回的模型仍可编辑。',
-      catalogSource: '目录来源',
-      catalogSourceDescription: '每个选项都是一个完整的 provider 记录；切换后会整体替换该模型的目录参数。',
-      catalogDefault: '默认 provider：{provider}（{context}/{output}）',
-      catalogOfficial: '官方 provider：{provider}（{context}/{output}）',
-      catalogProvider: '{provider}（{context}/{output}）',
+      metadataApplied: '已为 {matched} 个模型补全参数；官方 provider {official} 个，默认 provider {ambiguous} 个，没有元数据记录 {unmatched} 个。',
+      metadataUnavailable: '无法加载 models.dev 元数据；端点返回的模型仍可编辑。',
+      metadataSource: '元数据来源',
+      metadataSourceDescription: '每个选项都是一个完整的 provider 元数据记录；切换后会整体替换该模型的元数据参数。',
+      metadataDefault: '默认 provider：{provider}（{context}/{output}）',
+      metadataOfficial: '官方 provider：{provider}（{context}/{output}）',
+      metadataProvider: '{provider}（{context}/{output}）',
       reasoningInvalid: '推理强度必须是“继承”、禁用或级别列表。',
       reasoningEmpty: '已声明推理强度时至少选择一个级别。',
       reasoningOffOnly: '仅声明关闭级别没有可用的推理强度。',
@@ -218,27 +228,27 @@ window.__ModuleLoader__.load({
       background: 'transparent', color: 'inherit', cursor: 'pointer', font: 'inherit',
     }
 
-    function loadModelsDevCatalog() {
-      if (modelsDevCatalogPromise === undefined) {
-        modelsDevCatalogPromise = fetch(MODELS_DEV_CATALOG_URL, { cache: 'force-cache' }).then(async response => {
+    function loadModelsDevMetadata() {
+      if (modelsDevMetadataPromise === undefined) {
+        modelsDevMetadataPromise = fetch(MODELS_DEV_METADATA_URL, { cache: 'force-cache' }).then(async response => {
           if (!response.ok) throw new Error(`models.dev returned HTTP ${response.status}`)
           return response.json()
         }).catch(error => {
-          modelsDevCatalogPromise = undefined
+          modelsDevMetadataPromise = undefined
           throw error
         })
       }
-      return modelsDevCatalogPromise
+      return modelsDevMetadataPromise
     }
 
-    function positiveCatalogLimit(value) {
+    function positiveMetadataLimit(value) {
       return typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : undefined
     }
 
-    function modelRecordCandidates(catalog, id) {
-      if (catalog === null || typeof catalog !== 'object') return []
+    function metadataRecordCandidates(metadata, id) {
+      if (metadata === null || typeof metadata !== 'object') return []
       const matches = []
-      for (const [providerKey, provider] of Object.entries(catalog)) {
+      for (const [providerKey, provider] of Object.entries(metadata)) {
         if (provider === null || typeof provider !== 'object') continue
         const models = provider.models
         const model = models !== null && typeof models === 'object' ? models[id] : undefined
@@ -266,27 +276,27 @@ window.__ModuleLoader__.load({
       ['alibaba', /^qwen(?:[-/.]|$)/],
     ]
 
-    function officialCatalogProviderForModel(id) {
+    function officialMetadataProviderForModel(id) {
       const normalized = id.toLowerCase()
       const bare = normalized.includes('/') ? normalized.slice(normalized.lastIndexOf('/') + 1) : normalized
       return OFFICIAL_PROVIDER_RULES.find(([, rule]) => rule.test(normalized) || rule.test(bare))?.[0]
     }
 
-    function catalogModelIdVariants(id) {
+    function metadataModelIdVariants(id) {
       const variants = [id]
       if (id.includes('/')) variants.push(id.slice(id.lastIndexOf('/') + 1))
       return [...new Set(variants)]
     }
 
-    function catalogProviderModel(catalog, providerId, id) {
-      if (catalog === null || typeof catalog !== 'object') return undefined
-      for (const [providerKey, provider] of Object.entries(catalog)) {
+    function metadataProviderModel(metadata, providerId, id) {
+      if (metadata === null || typeof metadata !== 'object') return undefined
+      for (const [providerKey, provider] of Object.entries(metadata)) {
         if (provider === null || typeof provider !== 'object') continue
         const currentProviderId = typeof provider.id === 'string' && provider.id !== '' ? provider.id : providerKey
         if (currentProviderId !== providerId) continue
         const models = provider.models
         if (models === null || typeof models !== 'object') return undefined
-        for (const variant of catalogModelIdVariants(id)) {
+        for (const variant of metadataModelIdVariants(id)) {
           const key = Object.keys(models).find(modelId => modelId === variant || modelId.toLowerCase() === variant.toLowerCase())
           const model = key === undefined ? undefined : models[key]
           if (model !== null && typeof model === 'object') return { providerId, modelId: key, model }
@@ -296,20 +306,20 @@ window.__ModuleLoader__.load({
       return undefined
     }
 
-    function catalogLimit(model, field) {
+    function metadataLimit(model, field) {
       const limit = model !== null && typeof model === 'object'
         && model.limit !== null && typeof model.limit === 'object' ? model.limit : {}
-      return positiveCatalogLimit(limit[field])
+      return positiveMetadataLimit(limit[field])
     }
 
-    function catalogLimitText(model, field) {
-      const value = catalogLimit(model, field)
+    function metadataLimitText(model, field) {
+      const value = metadataLimit(model, field)
       return value === undefined ? '?' : String(value)
     }
 
-    function compareCatalogLimits(left, right, field) {
-      const leftValue = catalogLimit(left, field)
-      const rightValue = catalogLimit(right, field)
+    function compareMetadataLimits(left, right, field) {
+      const leftValue = metadataLimit(left, field)
+      const rightValue = metadataLimit(right, field)
       if (leftValue === undefined && rightValue === undefined) return 0
       if (leftValue === undefined) return 1
       if (rightValue === undefined) return -1
@@ -321,20 +331,20 @@ window.__ModuleLoader__.load({
     }
 
     // Rank complete provider records; never combine fields from different providers.
-    function defaultCatalogCandidate(candidates) {
+    function defaultMetadataCandidate(candidates) {
       return [...candidates].sort((left, right) => {
-        const context = compareCatalogLimits(left.model, right.model, 'context')
+        const context = compareMetadataLimits(left.model, right.model, 'context')
         if (context !== 0) return context
-        const output = compareCatalogLimits(left.model, right.model, 'output')
+        const output = compareMetadataLimits(left.model, right.model, 'output')
         if (output !== 0) return output
         return left.providerId.localeCompare(right.providerId)
       })[0]
     }
 
-    function catalogMatchForEndpoint(catalog, id) {
-      const exactCandidates = modelRecordCandidates(catalog, id)
-      const officialProvider = officialCatalogProviderForModel(id)
-      const official = officialProvider === undefined ? undefined : catalogProviderModel(catalog, officialProvider, id)
+    function metadataMatchForEndpoint(metadata, id) {
+      const exactCandidates = metadataRecordCandidates(metadata, id)
+      const officialProvider = officialMetadataProviderForModel(id)
+      const official = officialProvider === undefined ? undefined : metadataProviderModel(metadata, officialProvider, id)
       const exactOfficial = officialProvider === undefined
         ? undefined
         : exactCandidates.find(candidate => candidate.providerId === officialProvider)
@@ -354,7 +364,7 @@ window.__ModuleLoader__.load({
       if (candidates.length === 1) {
         return { candidates, selection: providerSelection(candidates[0].providerId), reason: 'unique' }
       }
-      const defaultCandidate = defaultCatalogCandidate(candidates)
+      const defaultCandidate = defaultMetadataCandidate(candidates)
       return {
         candidates,
         selection: defaultCandidate === undefined ? undefined : providerSelection(defaultCandidate.providerId),
@@ -362,14 +372,14 @@ window.__ModuleLoader__.load({
       }
     }
 
-    function catalogRecordForSelection(match, selection) {
+    function metadataRecordForSelection(match, selection) {
       if (match === undefined) return undefined
       const selected = selection === undefined ? match.selection : selection
       const candidate = match.candidates.find(item => providerSelection(item.providerId) === selected)
       return candidate === undefined ? match.candidates[0]?.model : candidate.model
     }
 
-    function reasoningEffortsFromCatalog(model) {
+    function reasoningEffortsFromMetadata(model) {
       if (model.reasoning === false) return false
       const options = Array.isArray(model.reasoning_options) ? model.reasoning_options : []
       const effort = options.find(option => option !== null && typeof option === 'object' && option.type === 'effort')
@@ -383,20 +393,20 @@ window.__ModuleLoader__.load({
     }
 
     function enrichDiscoveredModel(candidate, match, selection) {
-      const record = catalogRecordForSelection(match, selection)
+      const record = metadataRecordForSelection(match, selection)
       if (record === undefined) return { ...candidate }
       const limit = record.limit !== null && typeof record.limit === 'object' ? record.limit : {}
       const modalities = record.modalities !== null && typeof record.modalities === 'object' ? record.modalities : {}
       const input = Array.isArray(modalities.input) ? modalities.input.filter(value => value === 'text' || value === 'image') : []
-      const reasoningEfforts = reasoningEffortsFromCatalog(record)
+      const reasoningEfforts = reasoningEffortsFromMetadata(record)
       return {
         ...candidate,
         ...candidate.name === undefined && typeof record.name === 'string' ? { name: record.name } : {},
-        ...candidate.contextWindow === undefined && positiveCatalogLimit(limit.context) !== undefined
-          ? { contextWindow: positiveCatalogLimit(limit.context) }
+        ...candidate.contextWindow === undefined && positiveMetadataLimit(limit.context) !== undefined
+          ? { contextWindow: positiveMetadataLimit(limit.context) }
           : {},
-        ...candidate.maxTokens === undefined && positiveCatalogLimit(limit.output) !== undefined
-          ? { maxTokens: positiveCatalogLimit(limit.output) }
+        ...candidate.maxTokens === undefined && positiveMetadataLimit(limit.output) !== undefined
+          ? { maxTokens: positiveMetadataLimit(limit.output) }
           : {},
         ...input.length > 0 ? { input } : {},
         ...reasoningEfforts === undefined ? {} : { reasoningEfforts },
@@ -633,7 +643,7 @@ window.__ModuleLoader__.load({
 
     function ModelRow({
       model, index, onChange, disabled, lockId = false,
-      catalogChoice, catalogCandidates = [], catalogDefaultProvider, catalogOfficialProvider, onCatalogChoice, t,
+      metadataChoice, metadataCandidates = [], metadataDefaultProvider, metadataOfficialProvider, onMetadataChoice, t,
     }) {
       const patch = changes => {
         const next = { ...model, ...changes }
@@ -649,33 +659,33 @@ window.__ModuleLoader__.load({
       }
       return h('details', { style: { border: '1px solid var(--dsw-alias-border-l2)', borderRadius: '8px', padding: '8px' } },
         h('summary', { style: { cursor: 'pointer', fontSize: '14px' } }, typeof model.id === 'string' && model.id !== '' ? model.id : t('modelIndex', { index: index + 1 })),
-        catalogCandidates.length > 1 ? h('div', { style: { display: 'flex', flexDirection: 'column', gap: '5px', paddingTop: '10px' } },
-          h(Field, { label: t('catalogSource') }, h('select', {
+        metadataCandidates.length > 1 ? h('div', { style: { display: 'flex', flexDirection: 'column', gap: '5px', paddingTop: '10px' } },
+          h(Field, { label: t('metadataSource') }, h('select', {
             style: inputStyle,
-            value: catalogChoice ?? '',
+            value: metadataChoice ?? '',
             disabled,
-            onChange: event => onCatalogChoice?.(event.target.value),
-          }, catalogCandidates.map(candidate => h('option', {
+            onChange: event => onMetadataChoice?.(event.target.value),
+          }, metadataCandidates.map(candidate => h('option', {
             key: candidate.providerId,
             value: providerSelection(candidate.providerId),
-          }, candidate.providerId === catalogDefaultProvider
-            ? t('catalogDefault', {
+          }, candidate.providerId === metadataDefaultProvider
+            ? t('metadataDefault', {
               provider: candidate.providerId,
-              context: catalogLimitText(candidate.model, 'context'),
-              output: catalogLimitText(candidate.model, 'output'),
+              context: metadataLimitText(candidate.model, 'context'),
+              output: metadataLimitText(candidate.model, 'output'),
             })
-            : candidate.providerId === catalogOfficialProvider
-              ? t('catalogOfficial', {
+            : candidate.providerId === metadataOfficialProvider
+              ? t('metadataOfficial', {
                 provider: candidate.providerId,
-                context: catalogLimitText(candidate.model, 'context'),
-                output: catalogLimitText(candidate.model, 'output'),
+                context: metadataLimitText(candidate.model, 'context'),
+                output: metadataLimitText(candidate.model, 'output'),
               })
-            : t('catalogProvider', {
+            : t('metadataProvider', {
               provider: candidate.providerId,
-              context: catalogLimitText(candidate.model, 'context'),
-              output: catalogLimitText(candidate.model, 'output'),
+              context: metadataLimitText(candidate.model, 'context'),
+              output: metadataLimitText(candidate.model, 'output'),
             }))))),
-          h('p', { style: { margin: 0, color: 'var(--dsw-alias-label-tertiary)', fontSize: '12px' } }, t('catalogSourceDescription')),
+          h('p', { style: { margin: 0, color: 'var(--dsw-alias-label-tertiary)', fontSize: '12px' } }, t('metadataSourceDescription')),
         ) : null,
         h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', paddingTop: '10px' } },
           h(Field, { label: t('modelId') }, h('input', {
@@ -713,68 +723,99 @@ window.__ModuleLoader__.load({
       )
     }
 
-    function NewEndpointCard({ api, namespace, taken, writable, onCancel, onSaved, t }) {
-      const [endpoint, setEndpoint] = useState({ name: '', baseURL: '', api: 'openai-completions', apiKey: '', headers: [] })
-      const [candidates, setCandidates] = useState(undefined)
-      const [selected, setSelected] = useState(new Set())
-      const [modelDrafts, setModelDrafts] = useState({})
-      const [catalogMatches, setCatalogMatches] = useState({})
-      const [catalogSelections, setCatalogSelections] = useState({})
+    function EndpointEditor({
+      api, namespace, provider, initial, taken, writable, canRestoreInheritance, onCancel, onSaved, t,
+    }) {
+      const editing = provider !== undefined
+      const initialModels = Array.isArray(initial.models) ? initial.models.map(copyModel) : []
+      const inheritedHeaders = Array.isArray(initial.inheritedHeaders) ? initial.inheritedHeaders : []
+      const initialHeaders = Array.isArray(initial.headers) ? initial.headers : []
+      const [endpoint, setEndpoint] = useState({
+        name: initial.name ?? '',
+        baseURL: initial.baseURL ?? '',
+        api: initial.api ?? 'openai-completions',
+        apiKey: '',
+        headers: initialHeaders.map(row => ({ ...row })),
+      })
+      const [candidates, setCandidates] = useState(editing ? initialModels : undefined)
+      const [selected, setSelected] = useState(editing ? new Set(initialModels.map(model => model.id)) : new Set())
+      const [modelDrafts, setModelDrafts] = useState(editing
+        ? Object.fromEntries(initialModels.map(model => [model.id, { ...model }]))
+        : {})
+      const [metadataMatches, setMetadataMatches] = useState({})
+      const [metadataSelections, setMetadataSelections] = useState({})
       const [busy, setBusy] = useState(false)
       const [failure, setFailure] = useState(undefined)
-      const [catalogNotice, setCatalogNotice] = useState(undefined)
-      const [profileCreated, setProfileCreated] = useState(false)
-      const route = endpoint.name.toLowerCase()
-      const keyRef = route === '' ? '' : `${route.toUpperCase()}_API_KEY`
+      const [metadataNotice, setMetadataNotice] = useState(undefined)
+      const [settingsSaved, setSettingsSaved] = useState(false)
+      const route = editing ? provider : endpoint.name.toLowerCase()
+      const keyRef = editing
+        ? (initial.apiKeyEnv ?? `${route.toUpperCase()}_API_KEY`)
+        : route === '' ? '' : `${route.toUpperCase()}_API_KEY`
       const nameError = endpoint.name.length === 0
         ? t('endpointNameRequired')
         : /^[A-Za-z][A-Za-z0-9]*$/.test(endpoint.name) ? undefined : t('endpointNameInvalid')
       const urlError = endpoint.baseURL.length === 0 ? t('endpointUrlRequired') : endpointUrlError(endpoint.baseURL, t)
-      const keyError = apiKeyError(endpoint.apiKey, t)
+      const keyError = editing && endpoint.apiKey.trim() === '' ? undefined : apiKeyError(endpoint.apiKey, t)
       const requestHeadersError = headersError(endpoint.headers, t)
-      const routeTaken = taken.includes(route)
+      const routeTaken = !editing && taken.includes(route)
       const readyToFetch = nameError === undefined && urlError === undefined && keyError === undefined
         && requestHeadersError === undefined && !routeTaken
+      const readyToSave = nameError === undefined && keyError === undefined && requestHeadersError === undefined
+        && !routeTaken && (urlError === undefined || (editing && endpoint.baseURL.trim() === '' && (initial.baseURL ?? '') === ''))
       const selectedModels = candidates === undefined ? [] : candidates
         .filter(model => selected.has(model.id))
         .map(model => modelDrafts[model.id] ?? { ...model })
+      const effectiveHeaders = headersObject(endpoint.headers, inheritedHeaders)
+      const initialEffectiveHeaders = headersObject(initialHeaders, inheritedHeaders)
+      const modelsChanged = !jsonEqual(selectedModels, initialModels)
+      const headersChanged = !headersEqual(effectiveHeaders, initialEffectiveHeaders)
+      const endpointChanged = !editing || endpoint.name !== (initial.name ?? '')
+        || endpoint.baseURL.trim() !== (initial.baseURL ?? '')
+        || endpoint.api !== (initial.api ?? '') || modelsChanged || headersChanged
+      const keyChanged = endpoint.apiKey.trim() !== ''
       const profile = {
         displayName: endpoint.name,
         apiKeyEnv: keyRef,
         api: endpoint.api,
         baseURL: endpoint.baseURL.trim(),
         models: selectedModels.map(copyModel),
-        ...Object.keys(headersObject(endpoint.headers)).length === 0 ? {} : { headers: headersObject(endpoint.headers) },
+        ...Object.keys(effectiveHeaders).length === 0 ? {} : { headers: effectiveHeaders },
       }
       const preview = {
         'llm-pi-ai': { providers: { [route]: profile } },
-        credentials: { [keyRef]: '[write-only]' },
+        credentials: { [keyRef]: keyChanged ? '[write-only]' : '[unchanged]' },
       }
       const update = (field, value) => {
         setEndpoint(current => ({ ...current, [field]: value }))
-        setCandidates(undefined)
-        setSelected(new Set())
-        setModelDrafts({})
-        setCatalogMatches({})
-        setCatalogSelections({})
+        setMetadataMatches({})
+        setMetadataSelections({})
+        if (!editing) {
+          setCandidates(undefined)
+          setSelected(new Set())
+          setModelDrafts({})
+        }
         setFailure(undefined)
-        setCatalogNotice(undefined)
+        setMetadataNotice(undefined)
       }
       const fetchModels = async () => {
         setBusy(true)
         setFailure(undefined)
-        setCatalogNotice(undefined)
+        setMetadataNotice(undefined)
         try {
-          const [response, catalog] = await Promise.all([
+          const selectedBeforeFetch = new Set(selected)
+          const draftsBeforeFetch = modelDrafts
+          const [response, metadata] = await Promise.all([
             api.llm.discoverModels({
-              settingsNs: 'llm-pi-ai',
-              baseURL: endpoint.baseURL.trim(),
+               settingsNs: 'llm-pi-ai',
+               ...editing ? { provider } : {},
+               baseURL: endpoint.baseURL.trim(),
               // Model listings commonly remain OpenAI-shaped even when the
               // generation endpoint speaks Anthropic Messages.
               api: endpoint.api === 'anthropic-messages' ? 'openai-completions' : endpoint.api,
-              apiKey: endpoint.apiKey.trim(),
-            }),
-            loadModelsDevCatalog().catch(() => undefined),
+               ...endpoint.apiKey.trim() === '' ? {} : { apiKey: endpoint.apiKey.trim() },
+             }),
+            loadModelsDevMetadata().catch(() => undefined),
           ])
           if (!response.result.ok) {
             setFailure(response.result.error.message)
@@ -785,11 +826,11 @@ window.__ModuleLoader__.load({
             setFailure(t('discoveryEmpty'))
             return
           }
-          const prepared = catalog === undefined
+          const prepared = metadata === undefined
             ? models.map(candidate => ({ candidate, match: undefined }))
             : models.map(candidate => {
               const match = {
-                ...catalogMatchForEndpoint(catalog, candidate.id),
+                ...metadataMatchForEndpoint(metadata, candidate.id),
                 candidate,
               }
               return {
@@ -798,23 +839,32 @@ window.__ModuleLoader__.load({
               }
             })
           const enriched = prepared.map(item => item.candidate)
-          setCandidates(enriched)
-          setSelected(new Set(enriched.map(model => model.id)))
-          setModelDrafts(Object.fromEntries(enriched.map(model => [model.id, { ...model }])))
-          setCatalogMatches(Object.fromEntries(prepared
+          const fetchedIds = new Set(enriched.map(model => model.id))
+          const preserved = editing
+            ? (candidates ?? [])
+              .filter(model => selectedBeforeFetch.has(model.id) && !fetchedIds.has(model.id))
+              .map(model => draftsBeforeFetch[model.id] ?? { ...model })
+            : []
+          const nextCandidates = [...enriched, ...preserved]
+          setCandidates(nextCandidates)
+          setSelected(new Set(nextCandidates
+            .filter(model => selectedBeforeFetch.has(model.id))
+            .map(model => model.id)))
+          setModelDrafts(Object.fromEntries(nextCandidates.map(model => [model.id, draftsBeforeFetch[model.id] ?? { ...model }])))
+          setMetadataMatches(Object.fromEntries(prepared
             .filter(item => item.match !== undefined)
             .map(item => [item.candidate.id, item.match])))
-          setCatalogSelections(Object.fromEntries(prepared
+          setMetadataSelections(Object.fromEntries(prepared
             .filter(item => item.match !== undefined)
             .map(item => [item.candidate.id, item.match.selection])))
-          if (catalog === undefined) {
-            setCatalogNotice(t('catalogUnavailable'))
+          if (metadata === undefined) {
+            setMetadataNotice(t('metadataUnavailable'))
           } else {
             const matched = prepared.filter(item => item.match.reason !== 'none').length
             const official = prepared.filter(item => item.match.reason === 'official').length
             const ambiguous = prepared.filter(item => item.match.reason === 'default').length
             const unmatched = prepared.length - matched
-            setCatalogNotice(t('catalogApplied', { matched, official, ambiguous, unmatched }))
+            setMetadataNotice(t('metadataApplied', { matched, official, ambiguous, unmatched }))
           }
         } catch (error) {
           setFailure(messageOf(error))
@@ -834,10 +884,10 @@ window.__ModuleLoader__.load({
         .filter(model => !current.has(model.id))
         .map(model => model.id)))
       const updateSelectedModel = (id, next) => setModelDrafts(current => ({ ...current, [id]: next }))
-      const chooseCatalogSelection = (id, selection) => {
-        const match = catalogMatches[id]
+      const chooseMetadataSelection = (id, selection) => {
+        const match = metadataMatches[id]
         if (match === undefined || match.candidate === undefined) return
-        const previousSelection = catalogSelections[id] ?? match.selection
+        const previousSelection = metadataSelections[id] ?? match.selection
         const previous = enrichDiscoveredModel(match.candidate, match, previousSelection)
         const nextModel = enrichDiscoveredModel(match.candidate, match, selection)
         const current = modelDrafts[id] ?? previous
@@ -847,28 +897,78 @@ window.__ModuleLoader__.load({
           if (nextModel[field] === undefined) delete next[field]
           else next[field] = nextModel[field]
         }
-        setCatalogSelections(currentSelections => ({ ...currentSelections, [id]: selection }))
+        setMetadataSelections(currentSelections => ({ ...currentSelections, [id]: selection }))
         setModelDrafts(currentDrafts => ({ ...currentDrafts, [id]: next }))
+      }
+      const settingsOps = () => {
+        if (!editing) return [{ op: 'set', path: ['providers', route], value: profile }]
+        const ops = []
+        if (endpoint.name !== (initial.name ?? '')) {
+          ops.push({ op: 'set', path: ['providers', route, 'displayName'], value: endpoint.name })
+        }
+        if (endpoint.api !== (initial.api ?? '')) {
+          ops.push({ op: 'set', path: ['providers', route, 'api'], value: endpoint.api })
+        }
+        if (endpoint.baseURL.trim() !== (initial.baseURL ?? '')) {
+          ops.push({ op: 'set', path: ['providers', route, 'baseURL'], value: endpoint.baseURL.trim() })
+        }
+        if (modelsChanged) {
+          ops.push({ op: 'set', path: ['providers', route, 'models'], value: profile.models })
+        }
+        if (headersChanged) {
+          ops.push(Object.keys(effectiveHeaders).length === 0
+            ? { op: 'unset', path: ['providers', route, 'headers'] }
+            : { op: 'set', path: ['providers', route, 'headers'], value: effectiveHeaders })
+        }
+        if (initial.apiKeyEnv === undefined && keyChanged) {
+          ops.push({ op: 'set', path: ['providers', route, 'apiKeyEnv'], value: keyRef })
+        }
+        return ops
       }
       const save = async () => {
         setBusy(true)
         setFailure(undefined)
         try {
-          if (!profileCreated) {
-            const created = await api.settings.mutate({
-              ns: 'llm-pi-ai',
-              ops: [{ op: 'set', path: ['providers', route], value: profile }],
-              expectedRevision: namespace.revision,
-            })
-            if (!created.result.ok) {
-              setFailure(created.result.error.message)
+          if (!settingsSaved) {
+            const ops = settingsOps()
+            if (ops.length > 0) {
+              const created = await api.settings.mutate({
+                ns: 'llm-pi-ai',
+                ops,
+                expectedRevision: namespace.revision,
+              })
+              if (!created.result.ok) {
+                setFailure(created.result.error.message)
+                return
+              }
+            }
+            setSettingsSaved(true)
+          }
+          if (!editing || keyChanged) {
+            const stored = await api.credentials.set({ ref: keyRef, value: endpoint.apiKey.trim() })
+            if (!stored.result.ok) {
+              setFailure(stored.result.error.message)
               return
             }
-            setProfileCreated(true)
           }
-          const stored = await api.credentials.set({ ref: keyRef, value: endpoint.apiKey.trim() })
-          if (!stored.result.ok) {
-            setFailure(stored.result.error.message)
+          onSaved()
+        } catch (error) {
+          setFailure(messageOf(error))
+        } finally {
+          setBusy(false)
+        }
+      }
+      const restore = async () => {
+        setBusy(true)
+        setFailure(undefined)
+        try {
+          const response = await api.settings.mutate({
+            ns: 'llm-pi-ai',
+            ops: [{ op: 'unset', path: ['providers', route, 'models'] }],
+            expectedRevision: namespace.revision,
+          })
+          if (!response.result.ok) {
+            setFailure(response.result.error.message)
             return
           }
           onSaved()
@@ -880,22 +980,22 @@ window.__ModuleLoader__.load({
       }
       return h('div', { style: cardStyle },
         h('div', null,
-          h('h3', { style: { margin: 0, fontSize: '14px' } }, t('endpointTitle')),
+          h('h3', { style: { margin: 0, fontSize: '14px' } }, t(editing ? 'editEndpoint' : 'endpointTitle')),
           h('p', { style: { margin: '4px 0 0', color: 'var(--dsw-alias-label-tertiary)', fontSize: '13px' } }, t('endpointDescription')),
         ),
         h(Field, { label: t('endpointName') }, h('input', {
-          style: inputStyle, value: endpoint.name, disabled: busy || profileCreated,
+          style: inputStyle, value: endpoint.name, disabled: busy || settingsSaved,
           placeholder: t('endpointNamePlaceholder'), onChange: event => update('name', event.target.value),
         })),
         nameError !== undefined ? h('p', { style: { margin: 0, color: 'var(--dsw-alias-state-error-primary)', fontSize: '12px' } }, nameError) : null,
         nameError === undefined ? h('p', { style: { margin: 0, color: routeTaken ? 'var(--dsw-alias-state-error-primary)' : 'var(--dsw-alias-label-tertiary)', fontSize: '12px' } }, routeTaken ? t('routeTaken', { route }) : t('routePreview', { route, ref: keyRef })) : null,
         h(Field, { label: t('endpointUrl') }, h('input', {
-          style: inputStyle, type: 'url', value: endpoint.baseURL, disabled: busy || profileCreated,
+          style: inputStyle, type: 'url', value: endpoint.baseURL, disabled: busy || settingsSaved,
           placeholder: 'https://gateway.example/v1', onChange: event => update('baseURL', event.target.value),
         })),
         urlError !== undefined && endpoint.baseURL.length > 0 ? h('p', { style: { margin: 0, color: 'var(--dsw-alias-state-error-primary)', fontSize: '12px' } }, urlError) : null,
         h(Field, { label: t('apiProtocol') }, h('select', {
-          style: inputStyle, value: endpoint.api, disabled: busy || profileCreated,
+          style: inputStyle, value: endpoint.api, disabled: busy || settingsSaved,
           onChange: event => update('api', event.target.value),
         },
         h('option', { value: 'openai-completions' }, 'openai-completions'),
@@ -905,38 +1005,51 @@ window.__ModuleLoader__.load({
         h(HeaderEditor, {
           value: endpoint.headers,
           onChange: headers => update('headers', headers),
-          disabled: busy || profileCreated,
+          disabled: busy || settingsSaved,
           error: requestHeadersError,
           t,
         }),
+        inheritedHeaders.length === 0 ? null : h(HeaderEditor, {
+          value: inheritedHeaders,
+          onChange: () => {},
+          disabled: true,
+          error: undefined,
+          t,
+          title: 'inheritedHeaders',
+          description: 'inheritedHeadersDescription',
+          addable: false,
+          removable: false,
+        }),
         h(Field, { label: t('endpointKey') }, h('input', {
           style: inputStyle, type: 'password', autoComplete: 'off', value: endpoint.apiKey, disabled: busy,
-          placeholder: t('endpointKeyPlaceholder'), onChange: event => {
-            if (profileCreated) setEndpoint(current => ({ ...current, apiKey: event.target.value }))
-            else update('apiKey', event.target.value)
-          },
+          placeholder: t(editing ? 'endpointKeyExistingPlaceholder' : 'endpointKeyPlaceholder'),
+          onChange: event => update('apiKey', event.target.value),
         })),
         keyError !== undefined ? h('p', { style: { margin: 0, color: 'var(--dsw-alias-state-error-primary)', fontSize: '12px' } }, keyError) : null,
         h('div', { style: { display: 'flex', justifyContent: 'flex-end', gap: '8px' } },
-          h('button', { type: 'button', style: buttonStyle, disabled: busy || !readyToFetch || profileCreated, onClick: () => { void fetchModels() } }, busy ? t('fetching') : t('fetchModels')),
+          h('button', {
+            type: 'button', style: buttonStyle, disabled: busy || !readyToFetch || settingsSaved,
+            onClick: () => { void fetchModels() },
+          }, busy ? t(editing ? 'refreshingModels' : 'fetching') : t(editing ? 'refreshModels' : 'fetchModels')),
         ),
         candidates === undefined ? null : h('div', { style: { display: 'flex', flexDirection: 'column', gap: '8px' } },
           h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' } },
             h('strong', { style: { fontSize: '13px' } }, t('chooseModels')),
             h('div', { style: { display: 'flex', gap: '6px' } },
-              h('button', { type: 'button', style: buttonStyle, disabled: busy || profileCreated, onClick: selectAll }, t('selectAll')),
-              h('button', { type: 'button', style: buttonStyle, disabled: busy || profileCreated, onClick: invertSelection }, t('invertSelection')),
-              h('button', { type: 'button', style: buttonStyle, disabled: busy || profileCreated, onClick: selectNone }, t('selectNone')),
+              h('button', { type: 'button', style: buttonStyle, disabled: busy || settingsSaved, onClick: selectAll }, t('selectAll')),
+              h('button', { type: 'button', style: buttonStyle, disabled: busy || settingsSaved, onClick: invertSelection }, t('invertSelection')),
+              h('button', { type: 'button', style: buttonStyle, disabled: busy || settingsSaved, onClick: selectNone }, t('selectNone')),
+              canRestoreInheritance ? h('button', { type: 'button', style: buttonStyle, disabled: busy || settingsSaved, onClick: () => { void restore() } }, t('restoreInheritance')) : null,
             ),
           ),
           h('div', { style: { display: 'flex', flexDirection: 'column', gap: '5px', maxHeight: '220px', overflow: 'auto' } }, candidates.map(model => h('label', { key: model.id, style: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' } },
-            h('input', { type: 'checkbox', checked: selected.has(model.id), disabled: busy || profileCreated, onChange: () => toggle(model.id) }),
+            h('input', { type: 'checkbox', checked: selected.has(model.id), disabled: busy || settingsSaved, onChange: () => toggle(model.id) }),
             h('span', null, model.id),
           ))),
           selectedModels.length === 0 ? null : h('div', { style: { display: 'flex', flexDirection: 'column', gap: '8px' } },
             h('strong', { style: { fontSize: '13px' } }, t('selectedModelParameters')),
             selectedModels.map((model, index) => {
-              const match = catalogMatches[model.id]
+              const match = metadataMatches[model.id]
               const defaultProvider = match?.reason === 'default'
                 ? match.candidates.find(candidate => providerSelection(candidate.providerId) === match.selection)?.providerId
                 : undefined
@@ -946,13 +1059,13 @@ window.__ModuleLoader__.load({
                 model,
                 index,
                 onChange: next => updateSelectedModel(model.id, next),
-                disabled: busy || profileCreated,
+                disabled: busy || settingsSaved,
                 lockId: true,
-                catalogChoice: catalogSelections[model.id] ?? match?.selection,
-                catalogCandidates: match?.candidates,
-                catalogDefaultProvider: defaultProvider,
-                catalogOfficialProvider: officialProvider,
-                onCatalogChoice: next => chooseCatalogSelection(model.id, next),
+                metadataChoice: metadataSelections[model.id] ?? match?.selection,
+                metadataCandidates: match?.candidates,
+                metadataDefaultProvider: defaultProvider,
+                metadataOfficialProvider: officialProvider,
+                onMetadataChoice: next => chooseMetadataSelection(model.id, next),
                 t,
               })
             }),
@@ -964,15 +1077,16 @@ window.__ModuleLoader__.load({
           h('p', { style: { margin: 0, color: 'var(--dsw-alias-label-tertiary)', fontSize: '12px' } }, t('keyPreviewNotice')),
         ),
         failure !== undefined ? h('p', { style: { margin: 0, color: 'var(--dsw-alias-state-error-primary)', fontSize: '13px' } }, failure) : null,
-        catalogNotice === undefined ? null : h('p', { style: { margin: 0, color: 'var(--dsw-alias-label-tertiary)', fontSize: '12px' } }, catalogNotice),
+          metadataNotice === undefined ? null : h('p', { style: { margin: 0, color: 'var(--dsw-alias-label-tertiary)', fontSize: '12px' } }, metadataNotice),
         h('div', { style: { display: 'flex', justifyContent: 'flex-end', gap: '8px' } },
-          h('button', { type: 'button', style: buttonStyle, disabled: busy || profileCreated, onClick: onCancel }, t('cancel')),
+          h('button', { type: 'button', style: buttonStyle, disabled: busy, onClick: onCancel }, t('cancel')),
           h('button', {
             type: 'button',
             style: { ...buttonStyle, background: 'var(--dsw-alias-button-primary-fill)', color: 'var(--dsw-alias-label-primary-foreground)', borderColor: 'transparent' },
-            disabled: busy || !writable || !readyToFetch || selectedModels.length === 0,
+            disabled: busy || !writable || !readyToSave || selectedModels.length === 0
+              || (editing && !endpointChanged && !keyChanged),
             onClick: () => { void save() },
-          }, busy ? t('saving') : profileCreated ? t('retryKey') : t('confirmSave')),
+          }, busy ? t('saving') : settingsSaved ? t('retryKey') : editing ? t('saveChanges') : t('confirmSave')),
         ),
       )
     }
@@ -981,11 +1095,6 @@ window.__ModuleLoader__.load({
       const refresh = useSyncExternalStore(controller.subscribe, controller.getSnapshot, controller.getSnapshot)
       const [state, setState] = useState({ status: 'loading' })
       const [provider, setProvider] = useState('')
-      const [draft, setDraft] = useState([])
-      const [headerDraft, setHeaderDraft] = useState([])
-      const [draftRevision, setDraftRevision] = useState(-1)
-      const [saving, setSaving] = useState(false)
-      const [notice, setNotice] = useState(undefined)
       const [showCreate, setShowCreate] = useState(false)
 
       useEffect(() => {
@@ -1005,30 +1114,10 @@ window.__ModuleLoader__.load({
         return () => { alive = false }
       }, [api, refresh])
 
-      const namespace = state.status === 'ready' ? state.namespace : undefined
-      const profiles = namespace === undefined ? undefined : objectAt(namespace.value, ['providers'])
-      const providers = profiles !== null && typeof profiles === 'object' && !Array.isArray(profiles) ? Object.keys(profiles) : []
-      const activeProvider = providers.includes(provider) ? provider : providers[0]
-      const profile = activeProvider === undefined ? undefined : profiles[activeProvider]
-      const effectiveModels = profile !== null && typeof profile === 'object' && Array.isArray(profile.models) ? profile.models.map(copyModel) : []
-      const userProfile = activeProvider === undefined ? undefined : objectAt(namespace?.user, ['providers', activeProvider])
-      const baseProfile = activeProvider === undefined ? undefined : objectAt(namespace?.base, ['providers', activeProvider])
-      const userHeaders = userProfile !== null && typeof userProfile === 'object' ? headerRows(userProfile.headers) : []
-      const baseHeaders = baseProfile !== null && typeof baseProfile === 'object' ? headerRows(baseProfile.headers) : []
-      const namespaceRevision = namespace?.revision
-
-      useEffect(() => {
-        if (activeProvider === undefined || namespaceRevision === undefined) return
-        if (provider === activeProvider && draftRevision === namespaceRevision) return
-        setProvider(activeProvider)
-        setDraft(effectiveModels)
-        setHeaderDraft(userHeaders)
-        setDraftRevision(namespaceRevision)
-        setNotice(undefined)
-      }, [activeProvider, draftRevision, effectiveModels, namespaceRevision, provider, userHeaders])
-
       if (state.status === 'loading') return h('p', null, t('loading'))
       if (state.status === 'error') return h('p', { style: { color: 'var(--dsw-alias-state-error-primary)' } }, state.message)
+
+      const namespace = state.namespace
       if (namespace === undefined) {
         return h('section', { style: sectionStyle },
           h('h2', { style: { margin: 0, fontSize: '16px' } }, t('title')),
@@ -1036,168 +1125,73 @@ window.__ModuleLoader__.load({
         )
       }
 
-      const userModels = userProfile !== null && typeof userProfile === 'object' ? userProfile.models : undefined
-      const overridden = Array.isArray(userModels)
-      const canRestoreInheritance = overridden && baseProfile !== null && typeof baseProfile === 'object'
-      const models = provider === activeProvider && draftRevision === namespace.revision ? draft : effectiveModels
-      const requestHeaders = provider === activeProvider && draftRevision === namespace.revision ? headerDraft : userHeaders
-      const modelsChanged = provider === activeProvider && draftRevision === namespace.revision
-        && !jsonEqual(draft, effectiveModels)
-      const headersChanged = provider === activeProvider && draftRevision === namespace.revision
-        && !headersEqual(headersObject(headerDraft, baseHeaders), headersObject(userHeaders, baseHeaders))
-
+      const profiles = objectAt(namespace.value, ['providers'])
+      const providers = profiles !== null && typeof profiles === 'object' && !Array.isArray(profiles) ? Object.keys(profiles) : []
+      const activeProvider = providers.includes(provider) ? provider : providers[0]
+      const profile = activeProvider === undefined ? undefined : profiles[activeProvider]
+      const userProfile = activeProvider === undefined ? undefined : objectAt(namespace.user, ['providers', activeProvider])
+      const baseProfile = activeProvider === undefined ? undefined : objectAt(namespace.base, ['providers', activeProvider])
+      const canRestoreInheritance = activeProvider !== undefined
+        && userProfile !== null && typeof userProfile === 'object' && Array.isArray(userProfile.models)
+        && baseProfile !== null && typeof baseProfile === 'object'
+      const initial = activeProvider === undefined || profile === null || typeof profile !== 'object' ? undefined : {
+        name: typeof profile.displayName === 'string' ? profile.displayName : activeProvider,
+        baseURL: typeof profile.baseURL === 'string' ? profile.baseURL : '',
+        api: typeof profile.api === 'string' ? profile.api : 'openai-completions',
+        apiKeyEnv: typeof profile.apiKeyEnv === 'string' ? profile.apiKeyEnv : undefined,
+        models: Array.isArray(profile.models) ? profile.models : [],
+        headers: userProfile !== null && typeof userProfile === 'object' ? headerRows(userProfile.headers) : [],
+        inheritedHeaders: baseProfile !== null && typeof baseProfile === 'object' ? headerRows(baseProfile.headers) : [],
+      }
+      const emptyInitial = { name: '', baseURL: '', api: 'openai-completions', models: [], headers: [], inheritedHeaders: [] }
       const selectProvider = next => {
-        const nextProfile = profiles[next]
         setProvider(next)
-        setDraft(nextProfile !== null && typeof nextProfile === 'object' && Array.isArray(nextProfile.models)
-          ? nextProfile.models.map(copyModel)
-          : [])
-        const nextUserProfile = objectAt(namespace.user, ['providers', next])
-        setHeaderDraft(nextUserProfile !== null && typeof nextUserProfile === 'object' ? headerRows(nextUserProfile.headers) : [])
-        setDraftRevision(namespace.revision)
-        setNotice(undefined)
+        setShowCreate(false)
       }
-
-      const updateModel = (index, next) => setDraft(current => current.map((model, at) => at === index ? next : model))
-      const save = async () => {
-        if (!modelsChanged && !headersChanged) return
-        if (draftRevision !== namespace.revision) {
-          setNotice({ error: t('draftReloading') })
-          return
-        }
-        const error = modelsError(draft, t)
-        if (error !== undefined) {
-          setNotice({ error })
-          return
-        }
-        const requestHeadersError = headersError(headerDraft, t)
-        if (requestHeadersError !== undefined) {
-          setNotice({ error: requestHeadersError })
-          return
-        }
-        setSaving(true)
-        setNotice(undefined)
-        try {
-          const ops = modelsChanged
-            ? [{ op: 'set', path: ['providers', activeProvider, 'models'], value: draft }]
-            : []
-          if (headersChanged) {
-            const nextHeaders = headersObject(headerDraft, baseHeaders)
-            ops.push(Object.keys(nextHeaders).length === 0
-              ? { op: 'unset', path: ['providers', activeProvider, 'headers'] }
-              : { op: 'set', path: ['providers', activeProvider, 'headers'], value: nextHeaders })
-          }
-          const response = await api.settings.mutate({
-            ns: 'llm-pi-ai',
-            ops,
-            expectedRevision: namespace.revision,
-          })
-          if (!response.result.ok) {
-            setNotice({ error: response.result.error.message })
-            if (response.result.error.code === 'settings-conflict') controller.refresh()
-            return
-          }
-          setNotice({ success: t('saved') })
-          controller.refresh()
-        } catch (error) {
-          setNotice({ error: messageOf(error) })
-        } finally {
-          setSaving(false)
-        }
-      }
-      const reset = async () => {
-        setSaving(true)
-        setNotice(undefined)
-        try {
-          const response = await api.settings.mutate({
-            ns: 'llm-pi-ai',
-            ops: [{ op: 'unset', path: ['providers', activeProvider, 'models'] }],
-            expectedRevision: namespace.revision,
-          })
-          if (!response.result.ok) {
-            setNotice({ error: response.result.error.message })
-            return
-          }
-          setNotice({ success: t('restored') })
-          controller.refresh()
-        } catch (error) {
-          setNotice({ error: messageOf(error) })
-        } finally {
-          setSaving(false)
-        }
-      }
-      const discard = () => {
-        setDraft(effectiveModels)
-        setHeaderDraft(userHeaders)
-        setDraftRevision(namespace.revision)
-        setNotice(undefined)
+      const openCreate = () => {
+        setShowCreate(true)
+        setProvider('')
       }
 
       return h('section', { style: sectionStyle },
         h('div', null,
           h('h2', { style: { margin: 0, fontSize: '16px', lineHeight: '24px' } }, t('title')),
-          h('p', { style: { margin: '4px 0 0', color: 'var(--dsw-alias-label-tertiary)', fontSize: '14px', lineHeight: '22px' } },
-            t('intro'),
-          ),
+          h('p', { style: { margin: '4px 0 0', color: 'var(--dsw-alias-label-tertiary)', fontSize: '14px', lineHeight: '22px' } }, t('intro')),
         ),
-        providers.length === 0 ? h('p', { style: cardStyle }, t('noProviders')) : h('div', { style: cardStyle },
-          h(Field, { label: t('provider') }, h('select', {
-            style: inputStyle, value: activeProvider, disabled: saving,
+        h('div', { style: { display: 'flex', alignItems: 'flex-end', gap: '8px' } },
+          providers.length === 0 ? null : h(Field, { label: t('provider') }, h('select', {
+            style: inputStyle, value: activeProvider, disabled: showCreate,
             onChange: event => selectProvider(event.target.value),
           }, providers.map(id => h('option', { key: id, value: id }, id)))),
-          baseHeaders.length === 0 ? null : h(HeaderEditor, {
-            value: baseHeaders,
-            onChange: () => {},
-            disabled: true,
-            error: undefined,
-            t,
-            title: 'inheritedHeaders',
-            description: 'inheritedHeadersDescription',
-            addable: false,
-            removable: false,
-          }),
-          h(HeaderEditor, {
-            value: requestHeaders,
-            onChange: setHeaderDraft,
-            disabled: saving || !state.writable,
-            error: headersError(headerDraft, t),
-            t,
-          }),
-          h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' } },
-            h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-tertiary)' } }, overridden ? t('inheritedModels') : t('materializedModels')),
-            canRestoreInheritance ? h('button', { type: 'button', style: buttonStyle, disabled: saving || !state.writable, onClick: reset }, t('restoreInheritance')) : null,
-          ),
-          models.length === 0 ? h('p', { style: { margin: 0, color: 'var(--dsw-alias-label-tertiary)', fontSize: '13px' } }, t('noModels')) : h('div', { style: { display: 'flex', flexDirection: 'column', gap: '8px' } },
-            models.map((model, index) => h(ModelRow, {
-              key: `${model.id || 'model'}-${index}`, model, index,
-              onChange: next => updateModel(index, next), disabled: saving || !state.writable, t,
-            })),
-          ),
-          notice?.error !== undefined ? h('p', { style: { margin: 0, color: 'var(--dsw-alias-state-error-primary)', fontSize: '13px' } }, notice.error) : null,
-          notice?.success !== undefined ? h('p', { style: { margin: 0, color: 'var(--dsw-alias-state-success-primary)', fontSize: '13px' } }, notice.success) : null,
-          h('div', { style: { display: 'flex', justifyContent: 'flex-end', gap: '8px' } },
-            h('button', { type: 'button', style: buttonStyle, disabled: saving, onClick: discard }, t('discardReload')),
-            h('button', {
-              type: 'button',
-              style: { ...buttonStyle, background: 'var(--dsw-alias-button-primary-fill)', color: 'var(--dsw-alias-label-primary-foreground)', borderColor: 'transparent' },
-              disabled: saving || !state.writable || (!modelsChanged && !headersChanged)
-                || (modelsChanged && models.length === 0) || headersError(headerDraft, t) !== undefined,
-              onClick: () => { void save() },
-            }, saving ? t('saving') : t('save')),
-          ),
+          h('button', { type: 'button', style: buttonStyle, disabled: !state.writable || showCreate, onClick: openCreate }, t('addEndpoint')),
         ),
-        showCreate ? h(NewEndpointCard, {
+        showCreate ? h(EndpointEditor, {
+          key: 'new-endpoint',
           api,
           namespace,
+          initial: emptyInitial,
           taken: providers,
           writable: state.writable,
+          canRestoreInheritance: false,
           t,
           onCancel: () => setShowCreate(false),
           onSaved: () => {
             setShowCreate(false)
             controller.refresh()
           },
-        }) : h('button', { type: 'button', style: buttonStyle, disabled: saving || !state.writable, onClick: () => setShowCreate(true) }, t('addEndpoint')),
+        }) : activeProvider === undefined ? h('p', { style: cardStyle }, t('noProviders')) : h(EndpointEditor, {
+          key: `${activeProvider}-${namespace.revision}`,
+          api,
+          namespace,
+          provider: activeProvider,
+          initial,
+          taken: providers,
+          writable: state.writable,
+          canRestoreInheritance,
+          t,
+          onCancel: () => controller.refresh(),
+          onSaved: () => controller.refresh(),
+        }),
       )
     }
 
