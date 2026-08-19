@@ -2,7 +2,7 @@
 
 [English](README.en.md) | 中文
 
-为 [DeepSeek Harness](https://github.com/deepseek-harness/deepseek-harness) Web UI 添加“模型高级配置”页面，用于创建自定义模型端点并配置每个模型的能力参数。
+为 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) Web UI 添加“模型高级配置”页面，用于创建自定义模型端点并配置每个模型的能力参数。
 
 ## 功能
 
