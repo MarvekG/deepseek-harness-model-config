@@ -297,6 +297,11 @@ window.__ModuleLoader__.load({
       border: '1px solid var(--dsw-alias-border-l2)', borderRadius: '6px',
       background: 'transparent', color: 'inherit', font: 'inherit',
     }
+    const selectStyle = {
+      ...inputStyle,
+      background: 'var(--dsw-alias-bg-layer-1)',
+      colorScheme: 'inherit',
+    }
     const buttonStyle = {
       boxSizing: 'border-box', minHeight: '30px', padding: '4px 10px',
       border: '1px solid var(--dsw-alias-border-l2)', borderRadius: '15px',
@@ -731,7 +736,7 @@ window.__ModuleLoader__.load({
             }, t('delete')),
           )) : null,
         declared.length < EFFORTS.length ? h('div', { style: { display: 'flex', gap: '6px' } },
-          h('select', { style: inputStyle, value: newLevel, disabled, onChange: event => setNewLevel(event.target.value) },
+          h('select', { style: selectStyle, value: newLevel, disabled, onChange: event => setNewLevel(event.target.value) },
             h('option', { value: '' }, t('addLevel')),
             EFFORTS.filter(level => !declared.includes(level)).map(level => h('option', { key: level, value: level }, level)),
           ),
@@ -834,21 +839,21 @@ window.__ModuleLoader__.load({
             onChange: event => patch('defaultMaxTokens', event.target.value === '' ? undefined : positiveNumber(event.target.value)),
           })),
           h(Field, { label: t('defaultReasoning') }, h('select', {
-            style: inputStyle, value: value.reasoning ?? '', disabled,
+            style: selectStyle, value: value.reasoning ?? '', disabled,
             onChange: event => patch('reasoning', event.target.value === '' ? undefined : event.target.value),
           },
           h('option', { value: '' }, t('inheritDefault')),
           EFFORTS.map(level => h('option', { key: level, value: level }, level)),
           )),
           h(Field, { label: t('cacheRetention') }, h('select', {
-            style: inputStyle, value: value.cacheRetention ?? '', disabled,
+            style: selectStyle, value: value.cacheRetention ?? '', disabled,
             onChange: event => patch('cacheRetention', event.target.value === '' ? undefined : event.target.value),
           },
           h('option', { value: '' }, t('inheritDefault')),
           ['none', 'short', 'long'].map(mode => h('option', { key: mode, value: mode }, mode)),
           )),
           h(Field, { label: t('transport') }, h('select', {
-            style: inputStyle, value: value.transport ?? '', disabled,
+            style: selectStyle, value: value.transport ?? '', disabled,
             onChange: event => patch('transport', event.target.value === '' ? undefined : event.target.value),
           },
           h('option', { value: '' }, t('inheritDefault')),
@@ -888,14 +893,14 @@ window.__ModuleLoader__.load({
         h('div', { style: { display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '8px' } },
           h('strong', { style: { fontSize: '13px' } }, t('compat')),
           h(Field, { label: t('thinkingFormat') }, h('select', {
-            style: inputStyle, value: compat.thinkingFormat ?? '', disabled,
+            style: selectStyle, value: compat.thinkingFormat ?? '', disabled,
             onChange: event => patchCompat('thinkingFormat', event.target.value === '' ? undefined : event.target.value),
           },
           h('option', { value: '' }, t('inheritDefault')),
           THINKING_FORMATS.map(format => h('option', { key: format, value: format }, format)),
           )),
           h(Field, { label: t('supportsReasoningEffort') }, h('select', {
-            style: inputStyle, value: compat.supportsReasoningEffort === undefined ? '' : String(compat.supportsReasoningEffort), disabled,
+            style: selectStyle, value: compat.supportsReasoningEffort === undefined ? '' : String(compat.supportsReasoningEffort), disabled,
             onChange: event => patchCompat('supportsReasoningEffort', event.target.value === '' ? undefined : event.target.value === 'true'),
           },
           h('option', { value: '' }, t('inheritDefault')),
@@ -906,7 +911,7 @@ window.__ModuleLoader__.load({
         h('div', { style: { display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '8px' } },
           h('strong', { style: { fontSize: '13px' } }, t('retryPolicy')),
           h(Field, { label: t('retryMode') }, h('select', {
-            style: inputStyle, value: retryMode, disabled,
+            style: selectStyle, value: retryMode, disabled,
             onChange: event => {
               const mode = event.target.value
               if (mode === '') patch('retryPolicy', undefined)
@@ -970,14 +975,14 @@ window.__ModuleLoader__.load({
         h('strong', { style: { fontSize: '13px' } }, t('compat')),
         h('p', { style: { margin: 0, color: 'var(--dsw-alias-label-tertiary)', fontSize: '12px' } }, t('modelCompatDescription')),
         h(Field, { label: t('thinkingFormat') }, h('select', {
-          style: inputStyle, value: compat.thinkingFormat ?? '', disabled: !enabled,
+          style: selectStyle, value: compat.thinkingFormat ?? '', disabled: !enabled,
           onChange: event => patch('thinkingFormat', event.target.value === '' ? undefined : event.target.value),
         },
         h('option', { value: '' }, t('inheritDefault')),
         THINKING_FORMATS.map(format => h('option', { key: format, value: format }, format)),
         )),
         h(Field, { label: t('supportsReasoningEffort') }, h('select', {
-          style: inputStyle,
+          style: selectStyle,
           value: compat.supportsReasoningEffort === undefined ? '' : String(compat.supportsReasoningEffort),
           disabled: !enabled,
           onChange: event => patch('supportsReasoningEffort', event.target.value === '' ? undefined : event.target.value === 'true'),
@@ -1009,7 +1014,7 @@ window.__ModuleLoader__.load({
         h('summary', { style: { cursor: 'pointer', fontSize: '14px' } }, typeof model.id === 'string' && model.id !== '' ? model.id : t('modelIndex', { index: index + 1 })),
         metadataCandidates.length > 1 ? h('div', { style: { display: 'flex', flexDirection: 'column', gap: '5px', paddingTop: '10px' } },
           h(Field, { label: t('metadataSource') }, h('select', {
-            style: inputStyle,
+            style: selectStyle,
             value: metadataChoice ?? '',
             disabled,
             onChange: event => onMetadataChoice?.(event.target.value),
@@ -1364,7 +1369,7 @@ window.__ModuleLoader__.load({
         })),
         urlError !== undefined && endpoint.baseURL.length > 0 ? h('p', { style: { margin: 0, color: 'var(--dsw-alias-state-error-primary)', fontSize: '12px' } }, urlError) : null,
         h(Field, { label: t('apiProtocol') }, h('select', {
-          style: inputStyle, value: endpoint.api, disabled: busy || settingsSaved,
+          style: selectStyle, value: endpoint.api, disabled: busy || settingsSaved,
           onChange: event => update('api', event.target.value),
         },
         h('option', { value: 'openai-completions' }, 'openai-completions'),
@@ -1588,7 +1593,7 @@ window.__ModuleLoader__.load({
         ),
         h('div', { style: { display: 'flex', alignItems: 'flex-end', gap: '8px' } },
           providers.length === 0 ? null : h(Field, { label: t('provider') }, h('select', {
-            style: inputStyle, value: activeProvider, disabled: showCreate,
+            style: selectStyle, value: activeProvider, disabled: showCreate,
             onChange: event => selectProvider(event.target.value),
           }, providers.map(id => h('option', { key: id, value: id }, id)))),
           h('button', { type: 'button', style: buttonStyle, disabled: !state.writable || showCreate, onClick: openCreate }, t('addEndpoint')),
