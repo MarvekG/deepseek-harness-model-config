@@ -460,6 +460,13 @@ window.__ModuleLoader__.load({
       return candidate === undefined ? match.candidates[0]?.model : candidate.model
     }
 
+    function retainedMetadataSelection(match, previousSelection) {
+      return previousSelection !== undefined
+        && match.candidates.some(candidate => providerSelection(candidate.providerId) === previousSelection)
+        ? previousSelection
+        : match.selection
+    }
+
     function reasoningEffortsFromMetadata(model) {
       if (model.reasoning === false) return false
       const options = Array.isArray(model.reasoning_options) ? model.reasoning_options : []
@@ -473,7 +480,7 @@ window.__ModuleLoader__.load({
       return Object.keys(result).some(level => level !== 'off') ? result : undefined
     }
 
-    function enrichDiscoveredModel(candidate, match, selection) {
+    function enrichDiscoveredModel(candidate, match, selection, replaceMetadata = false) {
       const record = metadataRecordForSelection(match, selection)
       if (record === undefined) return { ...candidate }
       const limit = record.limit !== null && typeof record.limit === 'object' ? record.limit : {}
@@ -482,11 +489,11 @@ window.__ModuleLoader__.load({
       const reasoningEfforts = reasoningEffortsFromMetadata(record)
       return {
         ...candidate,
-        ...candidate.name === undefined && typeof record.name === 'string' ? { name: record.name } : {},
-        ...candidate.contextWindow === undefined && positiveMetadataLimit(limit.context) !== undefined
+        ...(replaceMetadata || candidate.name === undefined) && typeof record.name === 'string' ? { name: record.name } : {},
+        ...(replaceMetadata || candidate.contextWindow === undefined) && positiveMetadataLimit(limit.context) !== undefined
           ? { contextWindow: positiveMetadataLimit(limit.context) }
           : {},
-        ...candidate.maxTokens === undefined && positiveMetadataLimit(limit.output) !== undefined
+        ...(replaceMetadata || candidate.maxTokens === undefined) && positiveMetadataLimit(limit.output) !== undefined
           ? { maxTokens: positiveMetadataLimit(limit.output) }
           : {},
         ...input.length > 0 ? { input } : {},
@@ -1158,6 +1165,7 @@ window.__ModuleLoader__.load({
         try {
           const selectedBeforeFetch = new Set(selected)
           const draftsBeforeFetch = modelDrafts
+          const metadataSelectionsBeforeFetch = metadataSelections
           const [response, metadata] = await Promise.all([
             api.llm.discoverModels({
                settingsNs: 'llm-pi-ai',
@@ -1186,9 +1194,10 @@ window.__ModuleLoader__.load({
                 ...metadataMatchForEndpoint(metadata, candidate.id),
                 candidate,
               }
+              const selection = retainedMetadataSelection(match, metadataSelectionsBeforeFetch[candidate.id])
               return {
-                candidate: enrichDiscoveredModel(candidate, match, match.selection),
-                match,
+                candidate: enrichDiscoveredModel(candidate, match, selection),
+                match: { ...match, selection },
               }
             })
           const enriched = prepared.map(item => item.candidate)
@@ -1241,12 +1250,11 @@ window.__ModuleLoader__.load({
         const match = metadataMatches[id]
         if (match === undefined || match.candidate === undefined) return
         const previousSelection = metadataSelections[id] ?? match.selection
-        const previous = enrichDiscoveredModel(match.candidate, match, previousSelection)
-        const nextModel = enrichDiscoveredModel(match.candidate, match, selection)
+        const previous = enrichDiscoveredModel(match.candidate, match, previousSelection, true)
+        const nextModel = enrichDiscoveredModel(match.candidate, match, selection, true)
         const current = modelDrafts[id] ?? previous
         const next = { ...current }
         for (const field of ['name', 'contextWindow', 'maxTokens', 'input', 'reasoningEfforts']) {
-          if (!jsonEqual(current[field], previous[field])) continue
           if (nextModel[field] === undefined) delete next[field]
           else next[field] = nextModel[field]
         }
