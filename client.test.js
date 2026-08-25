@@ -8,7 +8,7 @@ async function loadMetadataHelpers() {
   const source = await readFile(clientPath, 'utf8')
   const instrumented = source.replace(
     '    return { inject, apply }',
-    '    return { inject, apply, __test: { enrichDiscoveredModel, metadataCandidateForDiscovery, metadataMatchForModel, modelDisplayName, modelMatchesSearch, selectedModelsMissingFromDiscovery } }',
+    '    return { inject, apply, __test: { enrichDiscoveredModel, metadataCandidateForDiscovery, metadataMatchForModel, modelDisplayName, modelMatchesSearch, selectedModelsMissingFromDiscovery, sortCandidatesForDisplay } }',
   )
   let definition
   vm.runInNewContext(instrumented, {
@@ -103,4 +103,19 @@ test('refresh retains selected manual models absent from the endpoint response',
   )
 
   assert.deepEqual(retained, [manual])
+})
+
+test('the choose-models list sorts candidates by id without mutating the source order', async () => {
+  const { sortCandidatesForDisplay } = await loadMetadataHelpers()
+  const unsorted = [
+    { id: 'zeta-model' },
+    { id: 'Alpha-Model' },
+    { id: 'model-v10' },
+    { id: 'model-v9' },
+  ]
+
+  const sortedIds = Array.from(sortCandidatesForDisplay(unsorted), model => model.id)
+
+  assert.deepEqual(sortedIds, ['Alpha-Model', 'model-v9', 'model-v10', 'zeta-model'])
+  assert.deepEqual(unsorted.map(model => model.id), ['zeta-model', 'Alpha-Model', 'model-v10', 'model-v9'])
 })

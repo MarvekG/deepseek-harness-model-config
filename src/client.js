@@ -631,6 +631,11 @@ window.__ModuleLoader__.load({
         .some(value => typeof value === 'string' && value.toLowerCase().includes(normalized))
     }
 
+    function sortCandidatesForDisplay(candidates) {
+      return [...candidates].sort((left, right) =>
+        String(left?.id ?? '').localeCompare(String(right?.id ?? ''), undefined, { numeric: true }))
+    }
+
     function metadataCandidateForDiscovery(candidate, draft) {
       return draft === undefined ? candidate : { ...candidate, name: modelDisplayName(draft) }
     }
@@ -1292,8 +1297,8 @@ window.__ModuleLoader__.load({
           setBusy(false)
         }
       }
-      const visibleCandidates = (candidates ?? []).filter(candidate =>
-        modelMatchesSearch(modelDrafts[candidate.id] ?? candidate, modelSearch))
+      const visibleCandidates = sortCandidatesForDisplay((candidates ?? []).filter(candidate =>
+        modelMatchesSearch(modelDrafts[candidate.id] ?? candidate, modelSearch)))
       const toggle = id => setSelected(current => {
         const next = new Set(current)
         if (next.has(id)) next.delete(id)
