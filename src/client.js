@@ -122,6 +122,12 @@ window.__ModuleLoader__.load({
       refreshingModels: 'Refreshing…',
       discoveryEmpty: 'The endpoint returned no models to add.',
       chooseModels: 'Choose models to add',
+      searchModels: 'Search models',
+      searchModelsPlaceholder: 'Search model ID or display name',
+      noMatchingModels: 'No matching models.',
+      manualModelId: 'Manual model ID',
+      manualModelIdPlaceholder: 'Enter a model ID',
+      addManualModel: 'Add model',
       selectAll: 'Select all',
       invertSelection: 'Invert selection',
       selectNone: 'Select none',
@@ -256,6 +262,12 @@ window.__ModuleLoader__.load({
       refreshingModels: '重新拉取中…',
       discoveryEmpty: '端点没有返回可添加的模型。',
       chooseModels: '选择要添加的模型',
+      searchModels: '搜索模型',
+      searchModelsPlaceholder: '搜索模型 ID 或显示名称',
+      noMatchingModels: '没有匹配的模型。',
+      manualModelId: '手动模型 ID',
+      manualModelIdPlaceholder: '输入模型 ID',
+      addManualModel: '添加模型',
       selectAll: '全选',
       invertSelection: '反选',
       selectNone: '全不选',
@@ -331,21 +343,49 @@ window.__ModuleLoader__.load({
       return typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : undefined
     }
 
-    function metadataRecordCandidates(metadata, id) {
-      if (metadata === null || typeof metadata !== 'object') return []
-      const matches = []
-      for (const [providerKey, provider] of Object.entries(metadata)) {
-        if (provider === null || typeof provider !== 'object') continue
-        const models = provider.models
-        const model = models !== null && typeof models === 'object' ? models[id] : undefined
-        if (model !== null && typeof model === 'object') {
-          matches.push({
-            providerId: typeof provider.id === 'string' && provider.id !== '' ? provider.id : providerKey,
-            model,
-          })
-        }
+    // Keep the original spelling for display and persistence. Case folding only
+    // happens while looking up metadata, because models.dev model keys vary in case.
+    function metadataModelIdVariants(identifiers) {
+      const variants = []
+      for (const identifier of identifiers) {
+        if (typeof identifier !== 'string' || identifier === '') continue
+        variants.push(identifier)
+        if (identifier.includes('/')) variants.push(identifier.slice(identifier.lastIndexOf('/') + 1))
       }
-      return matches
+      return [...new Set(variants)]
+    }
+
+    function metadataProviderEntries(metadata) {
+      if (metadata === null || typeof metadata !== 'object') return []
+      return Object.entries(metadata).flatMap(([providerKey, provider]) => {
+        if (provider === null || typeof provider !== 'object') return []
+        return [{
+          providerId: typeof provider.id === 'string' && provider.id !== '' ? provider.id : providerKey,
+          models: provider.models,
+        }]
+      })
+    }
+
+    function metadataModelForVariants(models, variants) {
+      if (models === null || typeof models !== 'object') return undefined
+      const keys = Object.keys(models)
+      for (const variant of variants) {
+        const key = keys.find(modelId => modelId === variant || modelId.toLowerCase() === variant.toLowerCase())
+        const model = key === undefined ? undefined : models[key]
+        if (model !== null && typeof model === 'object') return { modelId: key, model }
+      }
+      return undefined
+    }
+
+    function metadataModelRecord(providerId, result) {
+      return result === undefined ? undefined : { providerId, ...result }
+    }
+
+    function metadataRecordCandidates(metadata, identifiers) {
+      const variants = metadataModelIdVariants(identifiers)
+      return metadataProviderEntries(metadata)
+        .map(({ providerId, models }) => metadataModelRecord(providerId, metadataModelForVariants(models, variants)))
+        .filter(record => record !== undefined)
     }
 
     const OFFICIAL_PROVIDER_RULES = [
@@ -362,34 +402,19 @@ window.__ModuleLoader__.load({
       ['alibaba', /^qwen(?:[-/.]|$)/],
     ]
 
-    function officialMetadataProviderForModel(id) {
-      const normalized = id.toLowerCase()
-      const bare = normalized.includes('/') ? normalized.slice(normalized.lastIndexOf('/') + 1) : normalized
-      return OFFICIAL_PROVIDER_RULES.find(([, rule]) => rule.test(normalized) || rule.test(bare))?.[0]
-    }
-
-    function metadataModelIdVariants(id) {
-      const variants = [id]
-      if (id.includes('/')) variants.push(id.slice(id.lastIndexOf('/') + 1))
-      return [...new Set(variants)]
-    }
-
-    function metadataProviderModel(metadata, providerId, id) {
-      if (metadata === null || typeof metadata !== 'object') return undefined
-      for (const [providerKey, provider] of Object.entries(metadata)) {
-        if (provider === null || typeof provider !== 'object') continue
-        const currentProviderId = typeof provider.id === 'string' && provider.id !== '' ? provider.id : providerKey
-        if (currentProviderId !== providerId) continue
-        const models = provider.models
-        if (models === null || typeof models !== 'object') return undefined
-        for (const variant of metadataModelIdVariants(id)) {
-          const key = Object.keys(models).find(modelId => modelId === variant || modelId.toLowerCase() === variant.toLowerCase())
-          const model = key === undefined ? undefined : models[key]
-          if (model !== null && typeof model === 'object') return { providerId, modelId: key, model }
-        }
-        return undefined
+    function officialMetadataProviderForModel(identifiers) {
+      for (const identifier of metadataModelIdVariants(identifiers)) {
+        const normalized = identifier.toLowerCase()
+        const provider = OFFICIAL_PROVIDER_RULES.find(([, rule]) => rule.test(normalized))?.[0]
+        if (provider !== undefined) return provider
       }
       return undefined
+    }
+
+    function metadataProviderModel(metadata, providerId, identifiers) {
+      const variants = metadataModelIdVariants(identifiers)
+      const provider = metadataProviderEntries(metadata).find(item => item.providerId === providerId)
+      return provider === undefined ? undefined : metadataModelRecord(providerId, metadataModelForVariants(provider.models, variants))
     }
 
     function metadataLimit(model, field) {
@@ -427,10 +452,10 @@ window.__ModuleLoader__.load({
       })[0]
     }
 
-    function metadataMatchForEndpoint(metadata, id) {
-      const exactCandidates = metadataRecordCandidates(metadata, id)
-      const officialProvider = officialMetadataProviderForModel(id)
-      const official = officialProvider === undefined ? undefined : metadataProviderModel(metadata, officialProvider, id)
+    function metadataMatchForIdentifiers(metadata, identifiers) {
+      const exactCandidates = metadataRecordCandidates(metadata, identifiers)
+      const officialProvider = officialMetadataProviderForModel(identifiers)
+      const official = officialProvider === undefined ? undefined : metadataProviderModel(metadata, officialProvider, identifiers)
       const exactOfficial = officialProvider === undefined
         ? undefined
         : exactCandidates.find(candidate => candidate.providerId === officialProvider)
@@ -455,6 +480,16 @@ window.__ModuleLoader__.load({
         candidates,
         selection: defaultCandidate === undefined ? undefined : providerSelection(defaultCandidate.providerId),
         reason: 'default',
+      }
+    }
+
+    function metadataMatchForModel(metadata, model) {
+      if (model === null || typeof model !== 'object' || typeof model.id !== 'string' || model.id === '') return undefined
+      // The edited display name is the preferred metadata identity; the wire
+      // model ID remains a fallback and is never rewritten by enrichment.
+      return {
+        ...metadataMatchForIdentifiers(metadata, [modelDisplayName(model), model.id]),
+        candidate: model,
       }
     }
 
@@ -494,7 +529,6 @@ window.__ModuleLoader__.load({
       const reasoningEfforts = reasoningEffortsFromMetadata(record)
       return {
         ...candidate,
-        ...(replaceMetadata || candidate.name === undefined) && typeof record.name === 'string' ? { name: record.name } : {},
         ...(replaceMetadata || candidate.contextWindow === undefined) && positiveMetadataLimit(limit.context) !== undefined
           ? { contextWindow: positiveMetadataLimit(limit.context) }
           : {},
@@ -584,6 +618,27 @@ window.__ModuleLoader__.load({
 
     function copyModel(model) {
       return model !== null && typeof model === 'object' && !Array.isArray(model) ? { ...model } : { id: '' }
+    }
+
+    function modelDisplayName(model) {
+      if (model !== null && typeof model === 'object' && typeof model.name === 'string' && model.name !== '') return model.name
+      return model !== null && typeof model === 'object' && typeof model.id === 'string' ? model.id : ''
+    }
+
+    function modelMatchesSearch(model, query) {
+      const normalized = query.trim().toLowerCase()
+      return normalized === '' || [model?.id, modelDisplayName(model)]
+        .some(value => typeof value === 'string' && value.toLowerCase().includes(normalized))
+    }
+
+    function metadataCandidateForDiscovery(candidate, draft) {
+      return draft === undefined ? candidate : { ...candidate, name: modelDisplayName(draft) }
+    }
+
+    function selectedModelsMissingFromDiscovery(candidates, selected, fetchedIds, drafts) {
+      return candidates
+        .filter(model => selected.has(model.id) && !fetchedIds.has(model.id))
+        .map(model => drafts[model.id] ?? { ...model })
     }
 
     function positiveNumber(value) {
@@ -1105,6 +1160,9 @@ window.__ModuleLoader__.load({
         : {})
       const [metadataMatches, setMetadataMatches] = useState({})
       const [metadataSelections, setMetadataSelections] = useState({})
+      const [modelsDevMetadata, setModelsDevMetadata] = useState(undefined)
+      const [modelSearch, setModelSearch] = useState('')
+      const [manualModelId, setManualModelId] = useState('')
       const [busy, setBusy] = useState(false)
       const [failure, setFailure] = useState(undefined)
       const [metadataNotice, setMetadataNotice] = useState(undefined)
@@ -1192,13 +1250,12 @@ window.__ModuleLoader__.load({
             setFailure(t('discoveryEmpty'))
             return
           }
+          setModelsDevMetadata(metadata)
           const prepared = metadata === undefined
             ? models.map(candidate => ({ candidate, match: undefined }))
             : models.map(candidate => {
-              const match = {
-                ...metadataMatchForEndpoint(metadata, candidate.id),
-                candidate,
-              }
+              const metadataCandidate = metadataCandidateForDiscovery(candidate, draftsBeforeFetch[candidate.id])
+              const match = metadataMatchForModel(metadata, metadataCandidate)
               const selection = retainedMetadataSelection(match, metadataSelectionsBeforeFetch[candidate.id])
               return {
                 candidate: enrichDiscoveredModel(candidate, match, selection),
@@ -1207,11 +1264,7 @@ window.__ModuleLoader__.load({
             })
           const enriched = prepared.map(item => item.candidate)
           const fetchedIds = new Set(enriched.map(model => model.id))
-          const preserved = editing
-            ? (candidates ?? [])
-              .filter(model => selectedBeforeFetch.has(model.id) && !fetchedIds.has(model.id))
-              .map(model => draftsBeforeFetch[model.id] ?? { ...model })
-            : []
+          const preserved = selectedModelsMissingFromDiscovery(candidates ?? [], selectedBeforeFetch, fetchedIds, draftsBeforeFetch)
           const nextCandidates = [...enriched, ...preserved]
           setCandidates(nextCandidates)
           setSelected(new Set(nextCandidates
@@ -1239,18 +1292,95 @@ window.__ModuleLoader__.load({
           setBusy(false)
         }
       }
+      const visibleCandidates = (candidates ?? []).filter(candidate =>
+        modelMatchesSearch(modelDrafts[candidate.id] ?? candidate, modelSearch))
       const toggle = id => setSelected(current => {
         const next = new Set(current)
         if (next.has(id)) next.delete(id)
         else next.add(id)
         return next
       })
-      const selectAll = () => setSelected(new Set((candidates ?? []).map(model => model.id)))
-      const selectNone = () => setSelected(new Set())
-      const invertSelection = () => setSelected(current => new Set((candidates ?? [])
-        .filter(model => !current.has(model.id))
-        .map(model => model.id)))
-      const updateSelectedModel = (id, next) => setModelDrafts(current => ({ ...current, [id]: next }))
+      const selectAll = () => setSelected(current => new Set([...current, ...visibleCandidates.map(model => model.id)]))
+      const selectNone = () => setSelected(current => {
+        const next = new Set(current)
+        for (const model of visibleCandidates) next.delete(model.id)
+        return next
+      })
+      const invertSelection = () => setSelected(current => {
+        const next = new Set(current)
+        for (const model of visibleCandidates) {
+          if (next.has(model.id)) next.delete(model.id)
+          else next.add(model.id)
+        }
+        return next
+      })
+      const applyModelMetadata = (model, metadata) => {
+        const match = metadataMatchForModel(metadata, model)
+        if (match === undefined) return
+        const selection = match.selection
+        setMetadataMatches(current => ({ ...current, [model.id]: { ...match, selection } }))
+        setMetadataSelections(current => ({ ...current, [model.id]: selection }))
+        setModelDrafts(current => {
+          const draft = current[model.id] ?? model
+          const draftMatch = metadataMatchForModel(metadata, draft)
+          return draftMatch === undefined
+            ? current
+            : { ...current, [model.id]: enrichDiscoveredModel(draft, draftMatch, draftMatch.selection) }
+        })
+      }
+      const withModelsDevMetadata = apply => {
+        if (modelsDevMetadata !== undefined) {
+          apply(modelsDevMetadata)
+          return true
+        }
+        void loadModelsDevMetadata().then(metadata => {
+          setModelsDevMetadata(metadata)
+          apply(metadata)
+        }).catch(() => setMetadataNotice(t('metadataUnavailable')))
+        return false
+      }
+      const addManualModel = () => {
+        const id = manualModelId.trim()
+        if (id === '') return
+        const existing = (candidates ?? []).find(candidate => candidate.id === id)
+        if (existing !== undefined) {
+          setSelected(current => new Set([...current, id]))
+          setManualModelId('')
+          return
+        }
+        const model = { id, name: id }
+        setCandidates(current => [...(current ?? []), model])
+        setSelected(current => new Set([...current, id]))
+        setModelDrafts(current => ({ ...current, [id]: model }))
+        setManualModelId('')
+        setFailure(undefined)
+        withModelsDevMetadata(metadata => applyModelMetadata(model, metadata))
+      }
+      const updateSelectedModel = (id, next) => {
+        const previous = modelDrafts[id] ?? candidates?.find(model => model.id === id)
+        const displayNameChanged = modelDisplayName(previous) !== modelDisplayName(next)
+        if (!displayNameChanged) {
+          setModelDrafts(current => ({ ...current, [id]: next }))
+          return
+        }
+        const rematch = metadata => {
+          const match = metadataMatchForModel(metadata, next)
+          const selection = match?.selection
+          const enriched = match === undefined ? next : enrichDiscoveredModel(next, match, selection)
+          setModelDrafts(current => {
+            const draft = current[id]
+            return draft !== undefined && modelDisplayName(draft) !== modelDisplayName(next)
+              ? current
+              : { ...current, [id]: enriched }
+          })
+          if (match !== undefined) {
+            setMetadataMatches(current => ({ ...current, [id]: { ...match, selection } }))
+            setMetadataSelections(current => ({ ...current, [id]: selection }))
+          }
+        }
+        setModelDrafts(current => ({ ...current, [id]: next }))
+        withModelsDevMetadata(rematch)
+      }
       const chooseMetadataSelection = (id, selection) => {
         const match = metadataMatches[id]
         if (match === undefined || match.candidate === undefined) return
@@ -1259,7 +1389,7 @@ window.__ModuleLoader__.load({
         const nextModel = enrichDiscoveredModel(match.candidate, match, selection, true)
         const current = modelDrafts[id] ?? previous
         const next = { ...current }
-        for (const field of ['name', 'contextWindow', 'maxTokens', 'input', 'reasoningEfforts']) {
+        for (const field of ['contextWindow', 'maxTokens', 'input', 'reasoningEfforts']) {
           if (nextModel[field] === undefined) delete next[field]
           else next[field] = nextModel[field]
         }
@@ -1398,20 +1528,52 @@ window.__ModuleLoader__.load({
             onClick: () => { void fetchModels() },
           }, busy ? t(editing ? 'refreshingModels' : 'fetching') : t(editing ? 'refreshModels' : 'fetchModels')),
         ),
+        h('div', { style: { display: 'flex', alignItems: 'flex-end', gap: '8px' } },
+          h(Field, { label: t('manualModelId') }, h('input', {
+            style: inputStyle, value: manualModelId, disabled: busy || settingsSaved,
+            placeholder: t('manualModelIdPlaceholder'),
+            onChange: event => setManualModelId(event.target.value),
+            onKeyDown: event => {
+              if (event.key === 'Enter') {
+                event.preventDefault()
+                addManualModel()
+              }
+            },
+          })),
+          h('button', {
+            type: 'button', style: buttonStyle, disabled: busy || settingsSaved || manualModelId.trim() === '',
+            onClick: addManualModel,
+          }, t('addManualModel')),
+        ),
         candidates === undefined ? null : h('div', { style: { display: 'flex', flexDirection: 'column', gap: '8px' } },
           h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' } },
-            h('strong', { style: { fontSize: '13px' } }, t('chooseModels')),
-            h('div', { style: { display: 'flex', gap: '6px' } },
+            h('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', minWidth: 'min(100%, 320px)', flex: '1 1 320px' } },
+              h('strong', { style: { fontSize: '13px', whiteSpace: 'nowrap' } }, t('chooseModels')),
+              h('input', {
+                style: { ...inputStyle, width: 'min(100%, 260px)' }, value: modelSearch, disabled: busy || settingsSaved,
+                'aria-label': t('searchModels'), placeholder: t('searchModelsPlaceholder'),
+                onChange: event => setModelSearch(event.target.value),
+              }),
+            ),
+            h('div', { style: { display: 'flex', gap: '6px', flexWrap: 'wrap' } },
               h('button', { type: 'button', style: buttonStyle, disabled: busy || settingsSaved, onClick: selectAll }, t('selectAll')),
               h('button', { type: 'button', style: buttonStyle, disabled: busy || settingsSaved, onClick: invertSelection }, t('invertSelection')),
               h('button', { type: 'button', style: buttonStyle, disabled: busy || settingsSaved, onClick: selectNone }, t('selectNone')),
               canRestoreInheritance ? h('button', { type: 'button', style: buttonStyle, disabled: busy || settingsSaved, onClick: () => { void restore() } }, t('restoreInheritance')) : null,
             ),
           ),
-          h('div', { style: { display: 'flex', flexDirection: 'column', gap: '5px', maxHeight: '220px', overflow: 'auto' } }, candidates.map(model => h('label', { key: model.id, style: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' } },
-            h('input', { type: 'checkbox', checked: selected.has(model.id), disabled: busy || settingsSaved, onChange: () => toggle(model.id) }),
-            h('span', null, model.id),
-          ))),
+          h('div', { style: { display: 'flex', flexDirection: 'column', gap: '5px', maxHeight: '220px', overflow: 'auto' } },
+            visibleCandidates.length === 0 ? h('p', { style: { margin: 0, color: 'var(--dsw-alias-label-tertiary)', fontSize: '13px' } }, t('noMatchingModels'))
+              : visibleCandidates.map(candidate => {
+                const model = modelDrafts[candidate.id] ?? candidate
+                const displayName = modelDisplayName(model)
+                return h('label', { key: candidate.id, style: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' } },
+                  h('input', { type: 'checkbox', checked: selected.has(candidate.id), disabled: busy || settingsSaved, onChange: () => toggle(candidate.id) }),
+                  h('span', null, candidate.id),
+                  displayName === candidate.id ? null : h('span', { style: { color: 'var(--dsw-alias-label-secondary)' } }, displayName),
+                )
+              }),
+          ),
           selectedModels.length === 0 ? null : h('div', { style: { display: 'flex', flexDirection: 'column', gap: '8px' } },
             h('strong', { style: { fontSize: '13px' } }, t('selectedModelParameters')),
             selectedModels.map((model, index) => {

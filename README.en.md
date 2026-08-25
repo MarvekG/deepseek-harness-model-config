@@ -9,10 +9,12 @@ Adds an Advanced Model Configuration page to the [DeepSeek Harness](https://gith
 - Create custom endpoints with a name, URL, API key, and protocol.
 - Configure provider-level custom request headers for model requests.
 - Supports `openai-completions`, `openai-responses`, and `anthropic-messages`.
-- Fetch candidate models through a unified `GET /models` flow, with select all, invert selection, and select none actions.
+- Fetch candidate models through a unified `GET /models` flow, search by model ID or display name, and select all, invert selection, or select none.
+- Add a model manually by entering its model ID without first fetching; entering an existing ID selects that model instead of duplicating it.
 - Use the same editor for new and saved endpoints; saved endpoints can refresh models, new models start unchecked, and checked models remain selected after a refresh.
 - Endpoint advanced parameters cover default capacities, input modalities, reasoning compatibility, caching, transport, timeouts, and retry policies.
-- Completes missing context windows, maximum output, input modalities, and reasoning capabilities from `models.dev`; it first selects the official provider implied by the model ID, then falls back to the default provider record, with whole-record switching available before saving.
+- Completes missing context windows, maximum output, input modalities, and reasoning capabilities from `models.dev`; it first selects the official provider implied by the display name (falling back to the model ID), then falls back to the default provider record, with whole-record switching available before saving.
+- Preserves the exact display-name spelling returned by the endpoint or entered by the user, and rematches metadata providers after a display-name edit.
 - Edit each selected model's capacity, text/image input support, and `reasoningEfforts`; review a configuration preview before saving.
 - Chinese and English UI copy follows the Harness language setting.
 - API keys are written only through Harness credential storage, never to `settings.yaml` or the configuration preview.
