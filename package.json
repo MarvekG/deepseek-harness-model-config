@@ -4,6 +4,9 @@
   "description": "Advanced per-model reasoning and capacity settings for DeepSeek Harness",
   "license": "MIT",
   "type": "module",
+  "scripts": {
+    "test": "node --test"
+  },
   "main": "./src/index.js",
   "exports": {
     ".": "./src/index.js",
