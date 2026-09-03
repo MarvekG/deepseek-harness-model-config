@@ -1799,9 +1799,31 @@ window.__ModuleLoader__.load({
       )
     }
 
-    const inject = ['slots', 'locale', 'connection', 'remote']
+    const inject = ['slots', 'locale', 'connection', 'remote', 'remote.settings', 'remote.credentials', 'remote.llm']
     function apply(ctx) {
-      const connection = ctx.get('connection')
+      // dsh >= 0.1.2 client runtime no longer exposes connection.api; bridge the
+      // plugin's legacy api.* call shapes onto the typert remotes service.
+      const remote = ctx.get('remote')
+      const wrap = promise => promise.then(result => ({ result }))
+      const pickDefined = source => Object.fromEntries(
+        ['provider', 'baseURL', 'api', 'apiKey']
+          .filter(key => source[key] !== undefined)
+          .map(key => [key, source[key]]),
+      )
+      const api = {
+        settings: {
+          describe: () => wrap(remote.settings.describe()),
+          mutate: ({ ns, ops, expectedRevision }) => wrap(remote.settings.mutate(ns, ops, expectedRevision)),
+        },
+        credentials: {
+          set: ({ ref, value }) => wrap(remote.credentials.set(ref, value)),
+          unset: ({ ref }) => wrap(remote.credentials.unset(ref)),
+        },
+        llm: {
+          discoverModels: request => remote.llm.discoverModels(request.settingsNs, pickDefined(request))
+            .then(result => result.ok ? { result: { ok: true, value: { models: result.value } } } : { result }),
+        },
+      }
       const controller = createController()
       ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'models-config-plugin: dictionaries')
       const t = ctx.locale.bind(NS)
@@ -1819,7 +1841,7 @@ window.__ModuleLoader__.load({
         id: 'model-config',
         order: 11,
         label: () => t('nav'),
-        inject: () => ({ api: connection.api, controller, t }),
+        inject: () => ({ api, controller, t }),
       }, ModelsConfigSection))
     }
 
