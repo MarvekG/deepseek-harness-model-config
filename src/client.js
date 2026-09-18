@@ -14,7 +14,38 @@ window.__ModuleLoader__.load({
       'streamIdleTimeoutMs', 'retryPolicy',
     ]
     const MODELS_DEV_METADATA_URL = 'https://models.dev/api.json'
+    // Official provider ID grammar (dsh-client-ui-settings ROUTE_PATTERN):
+    // lowercase letter first, then lowercase letters, digits, and dashes.
+    const PROVIDER_ID_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/
     let modelsDevMetadataPromise
+
+    // Aliyun-hosted OpenAI-compatible endpoints (DashScope compatible mode,
+    // Bailian MaaS) reject the OpenAI "developer" role; DSH's auto-detection
+    // cannot see them, so its default would send "developer" and fail. The
+    // built-in catalog pins compat.supportsDeveloperRole to false for these
+    // hosts; custom endpoints get the same treatment through effectiveCompat.
+    function isAliyunEndpoint(value) {
+      try {
+        const host = new URL(value).hostname.toLowerCase()
+        return host === 'aliyuncs.com' || host.endsWith('.aliyuncs.com')
+      } catch {
+        return false
+      }
+    }
+
+    function effectiveCompat(advanced, baseURL) {
+      const compat = advanced !== null && typeof advanced === 'object'
+        && advanced.compat !== null && typeof advanced.compat === 'object' && !Array.isArray(advanced.compat)
+        ? { ...advanced.compat } : {}
+      if (isAliyunEndpoint(baseURL) && compat.supportsDeveloperRole === undefined) {
+        compat.supportsDeveloperRole = false
+      }
+      return Object.keys(compat).length === 0 ? undefined : compat
+    }
+
+    function credentialKeyRef(route) {
+      return route === '' ? '' : `${route.toUpperCase().replace(/-/g, '_')}_API_KEY`
+    }
     const en = {
       nav: 'Advanced model config',
       title: 'Advanced model config',
@@ -57,8 +88,10 @@ window.__ModuleLoader__.load({
       endpointTitle: 'Add custom endpoint',
       editEndpoint: 'Edit endpoint',
       endpointDescription: 'Fetch candidates through the OpenAI-compatible model-list endpoint.',
-      endpointName: 'Name',
-      endpointNamePlaceholder: 'AcmeGateway',
+      providerId: 'Provider ID',
+      providerIdPlaceholder: 'acme-gateway',
+      displayName: 'Display name',
+      displayNamePlaceholder: 'Leave blank to use the provider ID',
       endpointUrl: 'Endpoint URL',
       apiProtocol: 'API protocol',
       endpointAdvanced: 'Endpoint advanced parameters',
@@ -76,6 +109,8 @@ window.__ModuleLoader__.load({
       modelCompatDescription: 'Only applies to openai-completions models.',
       thinkingFormat: 'Thinking format',
       supportsReasoningEffort: 'Supports reasoning_effort',
+      supportsDeveloperRole: 'Supports developer role',
+      aliyunDeveloperRoleNote: 'Aliyun endpoint detected: developer role is disabled by default because the endpoint only accepts the system role.',
       cacheRetention: 'Prompt cache retention',
       transport: 'Transport',
       timeoutMs: 'Request timeout (ms)',
@@ -107,8 +142,8 @@ window.__ModuleLoader__.load({
       endpointKey: 'API key',
       endpointKeyPlaceholder: 'Used only to fetch models and store the credential',
       endpointKeyExistingPlaceholder: 'Leave blank to keep the existing credential',
-      endpointNameRequired: 'Enter an endpoint name.',
-      endpointNameInvalid: 'The name must start with an English letter and contain only English letters and numbers.',
+      providerIdRequired: 'Enter a provider ID.',
+      providerIdInvalid: 'Start with a lowercase letter; then lowercase letters, digits, and dashes.',
       endpointUrlRequired: 'Enter an endpoint URL.',
       endpointUrlInvalid: 'Enter a valid http:// or https:// URL.',
       endpointUrlProtocol: 'The URL must start with http:// or https://.',
@@ -197,8 +232,10 @@ window.__ModuleLoader__.load({
       endpointTitle: '新增自定义端点',
       editEndpoint: '编辑端点',
       endpointDescription: '使用 OpenAI 兼容的模型列表接口获取候选模型。',
-      endpointName: '名称',
-      endpointNamePlaceholder: 'AcmeGateway',
+      providerId: 'Provider ID',
+      providerIdPlaceholder: 'acme-gateway',
+      displayName: '显示名称',
+      displayNamePlaceholder: '留空时使用 Provider ID',
       endpointUrl: '端点 URL',
       apiProtocol: 'API 协议',
       endpointAdvanced: '端点高级参数',
@@ -216,6 +253,8 @@ window.__ModuleLoader__.load({
       modelCompatDescription: '仅适用于 openai-completions 模型。',
       thinkingFormat: '推理格式',
       supportsReasoningEffort: '支持 reasoning_effort',
+      supportsDeveloperRole: '支持 developer 角色',
+      aliyunDeveloperRoleNote: '已识别阿里云端点：默认禁用 developer 角色，因为该端点只接受 system 角色。',
       cacheRetention: '提示缓存保留',
       transport: '传输方式',
       timeoutMs: '请求超时（毫秒）',
@@ -247,8 +286,8 @@ window.__ModuleLoader__.load({
       endpointKey: 'API Key',
       endpointKeyPlaceholder: '仅用于获取模型和保存凭据',
       endpointKeyExistingPlaceholder: '留空表示继续使用已有凭据',
-      endpointNameRequired: '请填写端点名称。',
-      endpointNameInvalid: '名称必须以英文字母开头，只能包含英文字母和数字。',
+      providerIdRequired: '请填写 Provider ID。',
+      providerIdInvalid: '以小写英文字母开头，其后只能使用小写字母、数字和连字符。',
       endpointUrlRequired: '请填写端点 URL。',
       endpointUrlInvalid: '请输入有效的 http:// 或 https:// URL。',
       endpointUrlProtocol: 'URL 必须以 http:// 或 https:// 开头。',
@@ -819,7 +858,7 @@ window.__ModuleLoader__.load({
     }
 
     function EndpointAdvancedEditor({
-      value, onChange, disabled, headers, inheritedHeaders, headersError, onHeadersChange, t,
+      value, onChange, disabled, headers, inheritedHeaders, headersError, onHeadersChange, aliyunDeveloperRoleDefault, t,
     }) {
       const patch = (field, next) => {
         const result = { ...value }
@@ -967,6 +1006,15 @@ window.__ModuleLoader__.load({
           h('option', { value: 'true' }, 'true'),
           h('option', { value: 'false' }, 'false'),
           )),
+          h(Field, { label: t('supportsDeveloperRole') }, h('select', {
+            style: selectStyle, value: compat.supportsDeveloperRole === undefined ? '' : String(compat.supportsDeveloperRole), disabled,
+            onChange: event => patchCompat('supportsDeveloperRole', event.target.value === '' ? undefined : event.target.value === 'true'),
+          },
+          h('option', { value: '' }, t('inheritDefault')),
+          h('option', { value: 'true' }, 'true'),
+          h('option', { value: 'false' }, 'false'),
+          )),
+          aliyunDeveloperRoleDefault ? h('p', { style: { margin: 0, color: 'var(--dsw-alias-label-tertiary)', fontSize: '12px' } }, t('aliyunDeveloperRoleNote')) : null,
         ),
         h('div', { style: { display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '8px' } },
           h('strong', { style: { fontSize: '13px' } }, t('retryPolicy')),
@@ -1046,6 +1094,16 @@ window.__ModuleLoader__.load({
           value: compat.supportsReasoningEffort === undefined ? '' : String(compat.supportsReasoningEffort),
           disabled: !enabled,
           onChange: event => patch('supportsReasoningEffort', event.target.value === '' ? undefined : event.target.value === 'true'),
+        },
+        h('option', { value: '' }, t('inheritDefault')),
+        h('option', { value: 'true' }, 'true'),
+        h('option', { value: 'false' }, 'false'),
+        )),
+        h(Field, { label: t('supportsDeveloperRole') }, h('select', {
+          style: selectStyle,
+          value: compat.supportsDeveloperRole === undefined ? '' : String(compat.supportsDeveloperRole),
+          disabled: !enabled,
+          onChange: event => patch('supportsDeveloperRole', event.target.value === '' ? undefined : event.target.value === 'true'),
         },
         h('option', { value: '' }, t('inheritDefault')),
         h('option', { value: 'true' }, 'true'),
@@ -1152,7 +1210,8 @@ window.__ModuleLoader__.load({
       const initialHeaders = Array.isArray(initial.headers) ? initial.headers : []
       const initialAdvanced = initial.advanced !== null && typeof initial.advanced === 'object' ? initial.advanced : {}
       const [endpoint, setEndpoint] = useState({
-        name: initial.name ?? '',
+        id: editing ? provider : '',
+        displayName: typeof initial.displayName === 'string' ? initial.displayName : '',
         baseURL: initial.baseURL ?? '',
         api: initial.api ?? 'openai-completions',
         apiKey: '',
@@ -1173,20 +1232,18 @@ window.__ModuleLoader__.load({
       const [metadataNotice, setMetadataNotice] = useState(undefined)
       const [settingsSaved, setSettingsSaved] = useState(false)
       const [advanced, setAdvanced] = useState({ ...initialAdvanced })
-      const route = editing ? provider : endpoint.name.toLowerCase()
-      const keyRef = editing
-        ? (initial.apiKeyEnv ?? `${route.toUpperCase()}_API_KEY`)
-        : route === '' ? '' : `${route.toUpperCase()}_API_KEY`
-      const nameError = endpoint.name.length === 0
-        ? t('endpointNameRequired')
-        : /^[A-Za-z][A-Za-z0-9]*$/.test(endpoint.name) ? undefined : t('endpointNameInvalid')
+      const route = editing ? provider : endpoint.id
+      const keyRef = editing ? (initial.apiKeyEnv ?? credentialKeyRef(route)) : credentialKeyRef(route)
+      const idError = endpoint.id.length === 0
+        ? t('providerIdRequired')
+        : PROVIDER_ID_PATTERN.test(endpoint.id) ? undefined : t('providerIdInvalid')
       const urlError = endpoint.baseURL.length === 0 ? t('endpointUrlRequired') : endpointUrlError(endpoint.baseURL, t)
       const keyError = editing && endpoint.apiKey.trim() === '' ? undefined : apiKeyError(endpoint.apiKey, t)
       const requestHeadersError = headersError(endpoint.headers, t)
       const routeTaken = !editing && taken.includes(route)
-      const readyToFetch = nameError === undefined && urlError === undefined && keyError === undefined
+      const readyToFetch = idError === undefined && urlError === undefined && keyError === undefined
         && requestHeadersError === undefined && !routeTaken
-      const readyToSave = nameError === undefined && keyError === undefined && requestHeadersError === undefined
+      const readyToSave = idError === undefined && keyError === undefined && requestHeadersError === undefined
         && !routeTaken && (urlError === undefined || (editing && endpoint.baseURL.trim() === '' && (initial.baseURL ?? '') === ''))
       const selectedModels = candidates === undefined ? [] : candidates
         .filter(model => selected.has(model.id))
@@ -1195,14 +1252,24 @@ window.__ModuleLoader__.load({
       const initialEffectiveHeaders = headersObject(initialHeaders, inheritedHeaders)
       const modelsChanged = !jsonEqual(selectedModels, initialModels)
       const headersChanged = !headersEqual(effectiveHeaders, initialEffectiveHeaders)
-      const endpointChanged = !editing || endpoint.name !== (initial.name ?? '')
+      // The auto-compat default follows the endpoint being edited or entered:
+      // an empty base URL in edit mode means "unchanged", so judge against the
+      // stored URL. The comparison baseline stays the stored profile, so an
+      // existing Aliyun endpoint without compat diffs against the pinned value
+      // and the fix materializes on the next save. Explicit user compat wins.
+      const judgedBaseURL = endpoint.baseURL.trim() !== '' ? endpoint.baseURL.trim() : (editing ? (initial.baseURL ?? '') : '')
+      const effectiveAdvancedNow = { ...advanced, compat: effectiveCompat(advanced, judgedBaseURL) }
+      const effectiveAdvancedInitial = { ...initialAdvanced }
+      const displayNameInitial = typeof initial.displayName === 'string' ? initial.displayName.trim() : ''
+      const displayName = endpoint.displayName.trim()
+      const endpointChanged = !editing || displayName !== displayNameInitial
         || endpoint.baseURL.trim() !== (initial.baseURL ?? '')
         || endpoint.api !== (initial.api ?? '') || modelsChanged || headersChanged
-        || !jsonEqual(normalizeAdvanced(advanced), normalizeAdvanced(initialAdvanced))
+        || !jsonEqual(normalizeAdvanced(effectiveAdvancedNow), normalizeAdvanced(effectiveAdvancedInitial))
       const keyChanged = endpoint.apiKey.trim() !== ''
-      const advancedProfile = normalizeAdvanced(advanced)
+      const advancedProfile = normalizeAdvanced(effectiveAdvancedNow)
       const profile = {
-        displayName: endpoint.name,
+        ...(displayName === '' ? {} : { displayName }),
         apiKeyEnv: keyRef,
         api: endpoint.api,
         baseURL: endpoint.baseURL.trim(),
@@ -1404,8 +1471,10 @@ window.__ModuleLoader__.load({
       const settingsOps = () => {
         if (!editing) return [{ op: 'set', path: ['providers', route], value: profile }]
         const ops = []
-        if (endpoint.name !== (initial.name ?? '')) {
-          ops.push({ op: 'set', path: ['providers', route, 'displayName'], value: endpoint.name })
+        if (displayName !== displayNameInitial) {
+          ops.push(displayName === ''
+            ? { op: 'unset', path: ['providers', route, 'displayName'] }
+            : { op: 'set', path: ['providers', route, 'displayName'], value: displayName })
         }
         if (endpoint.api !== (initial.api ?? '')) {
           ops.push({ op: 'set', path: ['providers', route, 'api'], value: endpoint.api })
@@ -1422,8 +1491,8 @@ window.__ModuleLoader__.load({
               : { op: 'set', path: ['providers', route, 'headers'], value: effectiveHeaders })
         }
         for (const field of PROVIDER_ADVANCED_FIELDS) {
-          const next = presentAdvancedValue(advanced[field]) ? advanced[field] : undefined
-          const previous = presentAdvancedValue(initialAdvanced[field]) ? initialAdvanced[field] : undefined
+          const next = presentAdvancedValue(effectiveAdvancedNow[field]) ? effectiveAdvancedNow[field] : undefined
+          const previous = presentAdvancedValue(effectiveAdvancedInitial[field]) ? effectiveAdvancedInitial[field] : undefined
           if (jsonEqual(next, previous)) continue
           ops.push(next === undefined
             ? { op: 'unset', path: ['providers', route, field] }
@@ -1492,12 +1561,16 @@ window.__ModuleLoader__.load({
           h('h3', { style: { margin: 0, fontSize: '14px' } }, t(editing ? 'editEndpoint' : 'endpointTitle')),
           h('p', { style: { margin: '4px 0 0', color: 'var(--dsw-alias-label-tertiary)', fontSize: '13px' } }, t('endpointDescription')),
         ),
-        h(Field, { label: t('endpointName') }, h('input', {
-          style: inputStyle, value: endpoint.name, disabled: busy || settingsSaved,
-          placeholder: t('endpointNamePlaceholder'), onChange: event => update('name', event.target.value),
+        h(Field, { label: t('providerId') }, h('input', {
+          style: inputStyle, value: endpoint.id, disabled: busy || settingsSaved || editing,
+          placeholder: t('providerIdPlaceholder'), onChange: event => update('id', event.target.value),
         })),
-        nameError !== undefined ? h('p', { style: { margin: 0, color: 'var(--dsw-alias-state-error-primary)', fontSize: '12px' } }, nameError) : null,
-        nameError === undefined ? h('p', { style: { margin: 0, color: routeTaken ? 'var(--dsw-alias-state-error-primary)' : 'var(--dsw-alias-label-tertiary)', fontSize: '12px' } }, routeTaken ? t('routeTaken', { route }) : t('routePreview', { route, ref: keyRef })) : null,
+        idError !== undefined ? h('p', { style: { margin: 0, color: 'var(--dsw-alias-state-error-primary)', fontSize: '12px' } }, idError) : null,
+        idError === undefined ? h('p', { style: { margin: 0, color: routeTaken ? 'var(--dsw-alias-state-error-primary)' : 'var(--dsw-alias-label-tertiary)', fontSize: '12px' } }, routeTaken ? t('routeTaken', { route }) : t('routePreview', { route, ref: keyRef })) : null,
+        h(Field, { label: t('displayName') }, h('input', {
+          style: inputStyle, value: endpoint.displayName, disabled: busy || settingsSaved,
+          placeholder: t('displayNamePlaceholder'), onChange: event => update('displayName', event.target.value),
+        })),
         h(Field, { label: t('endpointUrl') }, h('input', {
           style: inputStyle, type: 'url', value: endpoint.baseURL, disabled: busy || settingsSaved,
           placeholder: 'https://gateway.example/v1', onChange: event => update('baseURL', event.target.value),
@@ -1525,6 +1598,8 @@ window.__ModuleLoader__.load({
           inheritedHeaders,
           headersError: requestHeadersError,
           onHeadersChange: headers => update('headers', headers),
+          aliyunDeveloperRoleDefault: isAliyunEndpoint(judgedBaseURL)
+            && (advanced.compat === null || typeof advanced.compat !== 'object' || advanced.compat.supportsDeveloperRole === undefined),
           t,
         }),
         h('div', { style: { display: 'flex', justifyContent: 'flex-end', gap: '8px' } },
@@ -1671,7 +1746,7 @@ window.__ModuleLoader__.load({
         && baseProfile !== null && typeof baseProfile === 'object'
       const userAdvanced = userProfile !== null && typeof userProfile === 'object' ? userProfile : {}
       const initial = activeProvider === undefined || profile === null || typeof profile !== 'object' ? undefined : {
-        name: typeof profile.displayName === 'string' ? profile.displayName : activeProvider,
+        displayName: typeof profile.displayName === 'string' ? profile.displayName : '',
         baseURL: typeof profile.baseURL === 'string' ? profile.baseURL : '',
         api: typeof profile.api === 'string' ? profile.api : 'openai-completions',
         apiKeyEnv: typeof profile.apiKeyEnv === 'string' ? profile.apiKeyEnv : undefined,
@@ -1702,7 +1777,7 @@ window.__ModuleLoader__.load({
             : undefined,
         },
       }
-      const emptyInitial = { name: '', baseURL: '', api: 'openai-completions', models: [], headers: [], inheritedHeaders: [] }
+      const emptyInitial = { displayName: '', baseURL: '', api: 'openai-completions', models: [], headers: [], inheritedHeaders: [] }
       const selectProvider = next => {
         setProvider(next)
         setShowCreate(false)
@@ -1728,7 +1803,7 @@ window.__ModuleLoader__.load({
             return
           }
           const keyRef = typeof profile.apiKeyEnv === 'string' ? profile.apiKeyEnv : undefined
-          const generatedKeyRef = `${activeProvider.toUpperCase()}_API_KEY`
+          const generatedKeyRef = credentialKeyRef(activeProvider)
           if (keyRef === generatedKeyRef) {
             const credential = await api.credentials.unset({ ref: keyRef })
             if (!credential.result.ok) {
