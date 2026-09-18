@@ -1,4 +1,6 @@
-import assert from 'node:assert/strict'
+// Loose assert: objects returned from the vm realm carry a different
+// Object.prototype, which strict deepEqual would reject.
+import assert from 'node:assert'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import vm from 'node:vm'
@@ -8,11 +10,12 @@ async function loadMetadataHelpers() {
   const source = await readFile(clientPath, 'utf8')
   const instrumented = source.replace(
     '    return { inject, apply }',
-    '    return { inject, apply, __test: { enrichDiscoveredModel, metadataCandidateForDiscovery, metadataMatchForModel, modelDisplayName, modelMatchesSearch, selectedModelsMissingFromDiscovery, sortCandidatesForDisplay } }',
+    '    return { inject, apply, __test: { enrichDiscoveredModel, metadataCandidateForDiscovery, metadataMatchForModel, modelDisplayName, modelMatchesSearch, selectedModelsMissingFromDiscovery, sortCandidatesForDisplay, isAliyunEndpoint, effectiveCompat, credentialKeyRef, PROVIDER_ID_PATTERN } }',
   )
   let definition
   vm.runInNewContext(instrumented, {
     Headers,
+    URL,
     window: {
       __ModuleLoader__: {
         load(value) {
@@ -118,4 +121,58 @@ test('the choose-models list sorts candidates by id without mutating the source 
 
   assert.deepEqual(sortedIds, ['Alpha-Model', 'model-v9', 'model-v10', 'zeta-model'])
   assert.deepEqual(unsorted.map(model => model.id), ['zeta-model', 'Alpha-Model', 'model-v10', 'model-v9'])
+})
+
+test('aliyun endpoints are recognized by hostname, not by url substring', async () => {
+  const { isAliyunEndpoint } = await loadMetadataHelpers()
+
+  assert.equal(isAliyunEndpoint('https://dashscope.aliyuncs.com/compatible-mode/v1'), true)
+  assert.equal(isAliyunEndpoint('https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1'), true)
+  assert.equal(isAliyunEndpoint('https://dashscope-intl.aliyuncs.com/compatible-mode/v1'), true)
+  assert.equal(isAliyunEndpoint('https://api.deepseek.com'), false)
+  assert.equal(isAliyunEndpoint('https://gateway.example/aliyuncs.com'), false)
+  assert.equal(isAliyunEndpoint('https://aliyuncs.com.evil.example/v1'), false)
+  assert.equal(isAliyunEndpoint('not a url'), false)
+})
+
+test('effectiveCompat pins developer role off for aliyun unless configured explicitly', async () => {
+  const { effectiveCompat, isAliyunEndpoint } = await loadMetadataHelpers()
+  const aliyun = 'https://dashscope.aliyuncs.com/compatible-mode/v1'
+
+  assert.equal(effectiveCompat({}, 'https://api.deepseek.com'), undefined)
+  assert.deepEqual(effectiveCompat({}, aliyun), { supportsDeveloperRole: false })
+  assert.deepEqual(
+    effectiveCompat({ compat: { thinkingFormat: 'qwen' } }, aliyun),
+    { thinkingFormat: 'qwen', supportsDeveloperRole: false },
+  )
+  assert.deepEqual(
+    effectiveCompat({ compat: { supportsDeveloperRole: true } }, aliyun),
+    { supportsDeveloperRole: true },
+  )
+  assert.deepEqual(
+    effectiveCompat({ compat: { thinkingFormat: 'deepseek' } }, 'https://gateway.example/v1'),
+    { thinkingFormat: 'deepseek' },
+  )
+  assert.equal(isAliyunEndpoint(''), false)
+})
+
+test('credential refs follow the official dash-to-underscore derivation', async () => {
+  const { credentialKeyRef } = await loadMetadataHelpers()
+
+  assert.equal(credentialKeyRef('acme-gateway'), 'ACME_GATEWAY_API_KEY')
+  assert.equal(credentialKeyRef('qwen'), 'QWEN_API_KEY')
+  assert.equal(credentialKeyRef(''), '')
+})
+
+test('provider IDs accept exactly the official lowercase-hyphenated grammar', async () => {
+  const { PROVIDER_ID_PATTERN } = await loadMetadataHelpers()
+
+  assert.equal(PROVIDER_ID_PATTERN.test('acme-gateway'), true)
+  assert.equal(PROVIDER_ID_PATTERN.test('acme'), true)
+  assert.equal(PROVIDER_ID_PATTERN.test('acme-gateway-2'), true)
+  assert.equal(PROVIDER_ID_PATTERN.test('Acme'), false)
+  assert.equal(PROVIDER_ID_PATTERN.test('1acme'), false)
+  assert.equal(PROVIDER_ID_PATTERN.test('acme--gateway'), false)
+  assert.equal(PROVIDER_ID_PATTERN.test('acme-'), false)
+  assert.equal(PROVIDER_ID_PATTERN.test('acme_gateway'), false)
 })

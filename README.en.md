@@ -6,7 +6,8 @@ Adds an Advanced Model Configuration page to the [DeepSeek Harness](https://gith
 
 ## Features
 
-- Create custom endpoints with a name, URL, API key, and protocol.
+- Create custom endpoints with a provider ID, display name, URL, API key, and protocol. The provider ID follows the official grammar (lowercase letter first, then lowercase letters, digits, and dashes) and derives the credential name the official way (`acme-gateway` → `ACME_GATEWAY_API_KEY`); an empty display name falls back to the provider ID.
+- Detects Aliyun endpoints (`*.aliyuncs.com`, including DashScope compatible mode and Bailian MaaS): saving writes `supportsDeveloperRole: false` into the route-level `compat` so DSH does not send the OpenAI `developer` role these endpoints reject; both the route-level and model-level compat editors expose a manual switch.
 - Configure provider-level custom request headers for model requests.
 - Supports `openai-completions`, `openai-responses`, and `anthropic-messages`.
 - Fetch candidate models through a unified `GET /models` flow, search by model ID or display name, and select all, invert selection, or select none.
@@ -25,7 +26,7 @@ See the [llm-pi-ai parameter reference](docs/llm-pi-ai-parameters.md) for the co
 <img width="1666" height="810" alt="image" src="https://github.com/user-attachments/assets/945e6566-dca2-45ca-bcc3-4609ea47f079" />
 
 **Add an endpoint**
-Enter the endpoint name, BASE_URL, and API key, then fetch models and check the ones you want:
+Enter the provider ID (such as `acme-gateway`), display name, BASE_URL, and API key, then fetch models and check the ones you want:
 <img width="1746" height="1580" alt="image" src="https://github.com/user-attachments/assets/828f36ea-8a7d-4021-9dbb-253d60a1e949" />
 
 **Fill in remaining parameters**

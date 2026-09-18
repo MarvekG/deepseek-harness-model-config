@@ -6,7 +6,8 @@
 
 ## 功能
 
-- 新增自定义端点：名称、URL、API Key 和协议。
+- 新增自定义端点：Provider ID、显示名称、URL、API Key 和协议。Provider ID 遵循官方文法（小写字母开头，其后为小写字母、数字和连字符），凭据名按官方规则派生（`acme-gateway` → `ACME_GATEWAY_API_KEY`）；显示名称留空时回落为 Provider ID。
+- 自动识别阿里云端点（`*.aliyuncs.com`，含 DashScope 兼容模式与百炼 MaaS）：保存时在 route 级 `compat` 显式写入 `supportsDeveloperRole: false`，避免 DSH 默认发送 OpenAI `developer` 角色被拒绝；route 级与模型级 compat 均提供手动开关。
 - 支持在 provider 层配置自定义请求 Header，并应用于模型请求。
 - 支持 `openai-completions`、`openai-responses`、`anthropic-messages`。
 - 通过统一的 `GET /models` 流程获取候选模型，支持按模型 ID 或显示名称搜索、全选、反选和全不选。
@@ -25,7 +26,7 @@
 <img width="1666" height="810" alt="image" src="https://github.com/user-attachments/assets/945e6566-dca2-45ca-bcc3-4609ea47f079" />
 
 **新增端点**
-端点名称、BASE_URL、API-KEY，然后点击获取模型，把想要的模型勾选上：
+Provider ID（如 `acme-gateway`）、显示名称、BASE_URL、API-KEY，然后点击获取模型，把想要的模型勾选上：
 <img width="1746" height="1580" alt="image" src="https://github.com/user-attachments/assets/828f36ea-8a7d-4021-9dbb-253d60a1e949" />
 
 **参数补充**

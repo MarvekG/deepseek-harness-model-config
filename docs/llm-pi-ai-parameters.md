@@ -133,6 +133,7 @@ compat:
 |---|---|---|
 | `thinkingFormat` | `openai` / `deepseek` / `openrouter` / `together` / `zai` / `qwen` / `string-thinking` / `ant-ling` | 指定 reasoning 参数如何编码到请求协议。 |
 | `supportsReasoningEffort` | `boolean` | 明确声明端点是否接受 `reasoning_effort` 字段。 |
+| `supportsDeveloperRole` | `boolean` | 明确声明端点是否接受 OpenAI `developer` 角色；`false` 时系统提示词以 `system` 角色发送。阿里云端点（`*.aliyuncs.com`，含 DashScope 兼容模式与百炼 MaaS）只接受 `system`，本插件保存阿里云端点时会在 route 级自动写入 `false`（用户显式设置优先）。 |
 
 model 级 `compat` 覆盖 route 级 `compat`。如果两级都没有设置，则保留内置模型值或 pi-ai 的自动判断。
 
@@ -242,9 +243,10 @@ retryPolicy:
 
 模型高级配置页面目前支持：
 
-- 端点名称、URL、协议、API Key
+- Provider ID、显示名称、URL、协议、API Key
 - 自定义 Header 和继承 Header
 - 端点高级参数
+- 端点级与模型级 `compat` 的 `supportsDeveloperRole` 开关（阿里云端点自动默认 `false`）
 - 模型 ID、名称、上下文、最大输出
 - 模型文本/图片输入能力
 - 模型 reasoningEfforts
